@@ -14,13 +14,12 @@ from PIL import Image
 import torch
 from transformers import AutoProcessor, AutoModelForCausalLM, AutoTokenizer
 from ultralytics import YOLO
-# from huggingface_hub import login
 import google.generativeai as genai
-
+from dotenv import load_dotenv
+import os
 
 SAVE_PATH = "latest_detection.jpg"
-# hf_token = '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'
-gemini_api = 'AIzaSyCyUFIlmCg-bQ4gYSk-HdgKOdZviWgUT-8'
+gemini_api = os.getenv("GEMINI_API_KEY") 
 
 # login(hf_token)
 
