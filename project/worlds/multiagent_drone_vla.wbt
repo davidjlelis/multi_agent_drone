@@ -1,0 +1,71 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/dji/mavic/protos/Mavic2Pro.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/humans/pedestrian/protos/Pedestrian.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/animals/protos/Dog.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/tesla/TeslaModel3Simple.proto"
+
+WorldInfo {
+  defaultDamping Damping {
+  }
+}
+Viewpoint {
+  orientation 0.28649271017423017 -0.23243893216484604 -0.9294590199847924 4.546480103240715
+  position 8.331612611506445 -69.18691477242015 44.096285517321675
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 30 30
+  floorAppearance Parquetry {
+    type "dark strip"
+  }
+}
+Mavic2Pro {
+  translation 0 0 0.16
+  rotation 0.0024724981938072745 0.0011491742392552686 -0.9999962830687169 1.5768984882919632
+  controller "patrol_agent"
+}
+Pedestrian {
+  translation 10 10 1.27
+  rotation 0 0 1 -1.5707953071795862
+  name "pedestrian_1"
+}
+Pedestrian {
+  translation 10.1 8.53 1.37
+  rotation 0 0 1 1.5708
+  name "pedestrian_2"
+  shirtColor 0.8 0.55 0.2
+}
+Pedestrian {
+  translation -9.04 8.53 1.32
+  rotation -8.30716e-08 5.1913e-07 1 2.3562
+  name "pedestrian_3"
+  shirtColor 1 0.25 0.25
+}
+Pedestrian {
+  translation -8.93989 -11.02 1.37
+  rotation -1.99309e-06 1.95034e-08 1 0.523605
+  name "pedestrian_4"
+  shirtColor 0.25 0.25 1
+}
+Pedestrian {
+  translation 9.30108 -11.02 0.254599
+  rotation 0.7484709732024942 -0.33158198812837025 0.5743209794375863 2.32581
+  name "pedestrian_4(1)"
+  shirtColor 0.25 0.25 1
+}
+Dog {
+  translation 8.93 9.6 0
+  rotation 0 0 1 -1.5707953071795862
+}
+TeslaModel3Simple {
+  translation 5.66398 -6.80944 0.4
+  rotation 0 0 1 -0.785395307179586
+}
