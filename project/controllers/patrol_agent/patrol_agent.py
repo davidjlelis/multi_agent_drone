@@ -12,14 +12,15 @@ import numpy as np
 import cv2
 from PIL import Image
 import torch
-from transformers import AutoProcessor, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoProcessor, AutoModelForCausalLM, AutoTokenizer, Pipeline
 from ultralytics import YOLO
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
+import requests
+from huggingface_hub import InferenceClient
 
 SAVE_PATH = "latest_detection.jpg"
-gemini_api = os.getenv("GEMINI_API_KEY") 
 
 # login(hf_token)
 
@@ -38,13 +39,17 @@ VLM_processor = AutoProcessor.from_pretrained(VL_model_name, trust_remote_code=T
 VL_model = AutoModelForCausalLM.from_pretrained(VL_model_name, torch_dtype=torch_dtype, trust_remote_code=True).to(device)
 print('Florence2-base Model complete!')
 
-# Large Language Model
+# Large Language Model (Qwen2.5-72B-Instruct)
+API_URL = "https://router.huggingface.co/nebius/v1/chat/completions"        
+
 try:
-    genai.configure(api_key=gemini_api)
+    load_dotenv()
+    hf_api = os.getenv("HUGGING_FACE_HUB_TOKEN")
 except KeyError:
-    print("Error: GOOGLE_API_KEY environment variable not set.")
+    print("Error: HUGGING_FACE_HUB_TOKEN environment variable not set.")
     exit()
-LL_model = genai.GenerativeModel('gemini-1.5-flash')
+
+client = InferenceClient(provider="nebius", api_key=hf_api)
 
 def clamp(value, value_min, value_max):
     return min(max(value, value_min), value_max)
@@ -64,6 +69,9 @@ class Mavic(Robot):
         super().__init__()
 
         self.time_step = int(self.getBasicTimeStep())
+
+        #self.name = self.getName()
+        #self.client = self.setup_client_connection(name=self.name)
 
         self.camera = self.getDevice("camera")
         self.camera.enable(self.time_step)
@@ -92,6 +100,18 @@ class Mavic(Robot):
 
     def set_position(self, pos):
         self.current_pose = pos
+
+    def setup_client_connection(self, host='localhost', port=8000, name="drone"):
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect((host, port))
+            client.send(self.name.encode())
+            print(f"[CLIENT] Connected to server at {host}:{port} as {self.name}")
+            return client
+        except Exception as e:
+            print(f"[CLIENT ERROR] Could not connect to server: {e}")
+            sys.exit(1)
+        
 
     def move_to_target(self, waypoints):
         if self.target_position[0:2] == [0, 0]:
@@ -132,19 +152,28 @@ class Mavic(Robot):
 
         return round(x_p, 5), round(y_p, 5)
 
-    
     def is_emergency(self, description: str) -> bool:
         prompt = f"""
             You are a search-and-rescue assistant in a project simulation. Assume any 3D models of people are real people.
-            Determine if the following description indicates a dangerous or emergency situation.
+            Determine if the following description indicates a dangerous or emergency situation. Lean on the side of cautious.
 
             Description: "{description}"
 
-            Respond with "Yes" or "No". If "Yes", what actions should be taken?
+            Respond with "Yes" or "No". If "Yes", provide guidance for first responders.
             """
-        response = LL_model.generate_content(prompt)
+        
+        completion = client.chat.completions.create(
+            model="Qwen/Qwen2.5-72B-Instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            max_tokens=512,
+        )
 
-        return response.text.lower()
+        return completion.choices[0].message["content"]
 
     def run(self):
         print(f'Starting up {self.getName()}')
@@ -153,6 +182,12 @@ class Mavic(Robot):
         roll_disturbance = pitch_disturbance = yaw_disturbance = 0
         waypoints = [[10, 10], [-10, 10], [-10, -10], [10, -10]]
         self.target_altitude = 10
+
+        # Get waypoints from server
+        # data = self.client.recv(1024).decode()
+        # x, y = map(float, data.split(','))
+        # waypoints = [x, y]
+
 
         initial_yolo_time = -10
 
@@ -197,15 +232,9 @@ class Mavic(Robot):
                 generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
 
                 print("Florence-2 Output:", generated_text)
-                # if "person" in generated_text.lower() and "injured" in generated_text.lower():
-                #     est_x, est_y = self.estimate_person_location(telemetry_data)
-                #     annotated_image = rgb_image.copy()
-                #     cv2.putText(annotated_image, f"Injured Person Detected at ({est_x}, {est_y})", (10, 30),
-                #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-                #     cv2.imwrite(SAVE_PATH, cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
-                #     print(f"📸 Confirmed injured person! Image saved: {SAVE_PATH}")
 
-                print('LLM Response:', self.is_emergency(generated_text))
+                LLM_response = self.is_emergency(generated_text)
+                print('LLM Response:', LLM_response)
 
             if altitude > self.target_altitude - 1:
                 if self.getTime() - t1 > 0.1:
