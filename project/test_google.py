@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-gemini_api = os.getenv("GEMINI_API_KEY") 
+gemini_api = os.getenv("HF_API_KEY") 
 # Set up your API key
 genai.configure(api_key=gemini_api)
 
