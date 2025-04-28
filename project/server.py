@@ -11,8 +11,7 @@ import math
 import requests
 import torch
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForCausalLM
-from ultralytics import YOLO
+import pickle
 
 sys.path.append("..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
@@ -29,23 +28,6 @@ cipher = Fernet(encryption_key)
 connection_timestamps = []
 lock = threading.Lock()
 server_running = True  # Flag to control the server loop
-
-# Path to save the latest detection
-SAVE_PATH = "latest_detection.jpg"
-
-# Load YOLO model (pretrained for person detection)
-model = YOLO("yolov8n.pt") 
-
-# Set up Florence-2
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
-torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-
-VL_model = AutoModelForCausalLM.from_pretrained("microsoft/Florence-2-base", torch_dtype=torch_dtype, trust_remote_code=True).to(device)
-processor = AutoProcessor.from_pretrained("microsoft/Florence-2-base", trust_remote_code=True)
-
-prompt = "<OD>"
-
-
 
 def detect_jamming():
     """Detects if too many connections occur in a short time window."""
@@ -83,7 +65,7 @@ def estimate_person_location(drone_loc_dict):
     return round(x_p, 5), round(y_p, 5)
     pass
 
-def handle_client(conn, addr):
+def handle_client(conn, addr, waypoints):
     """Handles communication with a connected client."""
     global connection_timestamps
     with lock:
@@ -103,101 +85,21 @@ def handle_client(conn, addr):
     #     print("File already exists.")
     #     open(f"data_from_{addr}.txt", "w").close()
     try:
-        while True:
-            # Receive the image size
-            #data_size = struct.unpack("L", conn.recv(8))[0]
-            #print(f"Expected image size: {data_size} bytes")
-            data = conn.recv(16)
-            json_length, img_length = struct.unpack("QQ", data)
+        # Send waypoints as JSON
+        waypoints_json = pickle.dumps(waypoints)
+        print(f"Sent {len(waypoints_json)} bytes of pickled data.")
 
-            #JSON data
-            json_data = conn.recv(json_length).decode()
-            received_dict = json.loads(json_data)
-            #print("Received Dictionary:", received_dict)
-
-            # Receive the image data
-            img_bytes = b""
-            while len(img_bytes) < img_length:
-                print(f"Receiving... {len(img_bytes)}/{img_length} bytes")
-                packet = conn.recv(img_length - len(img_bytes))
-                if not packet:
-                    print("Received an empty packet. Connection might be closed.")
-                    break
-                img_bytes += packet
-            print(f"Fully received image data: {len(img_bytes)} bytes")
-
-            # Decode and display the image
-            #frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
-            image_array = np.frombuffer(img_bytes, dtype=np.uint8)
-            image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-
-            if image is None:
-                print("❌ Error: Could not decode the image. Data might be corrupted.")
-                return  # Exit if the image couldn't be decoded
-
-            print("✅ Successfully decoded the image.")
-
-            # with open("received_image.jpg", "wb") as f:
-            #     f.write(data)
-            # print("✅ Image saved as received_image.jpg. Try opening it manually.")
-
-            # Run YOLO detection
-            #results = model(image)[0]
-            #person_detected = False  # Flag to track if a person is detected
-
-            # Draw bounding boxes around detected people
-            # for result in results.boxes.data:
-            #     x1, y1, x2, y2, conf, cls = result.tolist()
-            #     #print(f"x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}, conf: {conf}, cls: {cls}")
-            #     if int(cls) == 0:  # Class 0 corresponds to 'person' in YOLO
-            #         person_detected = True
-            #         if conf > 0.7:
-            #             #print("Drone Location:", received_dict["x_d"], received_dict["y_d"])
-            #             #print("Estimated Person Location:", estimate_person_location(received_dict))
-            #             est_x, est_y = estimate_person_location(received_dict)
-            #             cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-            #             cv2.putText(image, f"Person {conf:.2f}, Estimated Location: {est_x}, {est_y}", (int(x1), int(y1) - 10),
-            #                         cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
-
-            # Run Florence-2
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(image_rgb)
-
-            inputs = processor(images=pil_image, text=prompt, return_tensors="pt").to(device, torch_dtype)
-            generated_outputs = VL_model.generate(**inputs, max_new_tokens=256)
-
-            generated_text = processor.batch_decode(generated_outputs, skip_special_tokens=True)[0]
-            print("Florence-2 Output:", generated_text)
-
-            person_detected = "person" in generated_text.lower()
-
-            cv2.imwrite(SAVE_PATH, image)
-
-            # Save the latest detection ONLY if a person is detected
-            if person_detected:
-                est_x, est_y = estimate_person_location(received_dict)
-                cv2.putText(image, f"Florence-2L Person Detected, Estimated Location: {est_x}, {est_y}", (10,30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-                cv2.imwrite(SAVE_PATH, image)
-                print(f"📸 Florence-2 detected a person! Image saved: {SAVE_PATH}")
-
-                # for YOLO
-                # cv2.imwrite(SAVE_PATH, image)
-                # print(f"📸 Person detected! Image saved: {SAVE_PATH}")
-
-            # Display the image with detections
-            #cv2.imshow("Drone Camera - YOLO Person Detection", image)
-
-            #if cv2.waitKey(1) & 0xFF == ord('q'):
-                #break
-
+        # First send the size of the data
+        conn.sendall(len(waypoints_json).to_bytes(8, byteorder='big'))
+        conn.sendall(waypoints_json)
+        print(f"✅ Sent waypoints to {addr}")
     except ConnectionResetError:
         print(f"⚠️ Connection lost with {addr}")
     finally:
         conn.close()
         print(f"🔌 Connection closed: {addr}")
 
-def accept_clients(server_socket):
+def accept_clients(server_socket, waypoints):
     """Accepts client connections in a loop."""
     print('accepting client')
     global server_running
@@ -205,29 +107,52 @@ def accept_clients(server_socket):
         try:
             server_socket.settimeout(1.0)  # Avoid blocking indefinitely
             conn, addr = server_socket.accept()
-            threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
+            threading.Thread(target=handle_client, args=(conn, addr, waypoints), daemon=True).start()
         except socket.timeout:
             continue  # Keep checking if the server is running
         except OSError:
             break  # Server socket closed
 
-# Start server
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((HOST, PORT))
-server_socket.listen()
-print(f"🚀 Server listening on {HOST}:{PORT}")
+def generate_waypoints(x_dim, y_dim, step=1):
+    waypoints = []
+    x_start = int(-x_dim/2)
+    x_end = int(x_dim/2)
+    y_start = int(-y_dim/2)
+    y_end = int(y_dim/2)
 
-# Start accepting clients in a separate thread
-accept_thread = threading.Thread(target=accept_clients, args=(server_socket,), daemon=True)
-accept_thread.start()
+    for x in range(x_start, x_end+1, step):
+        for y in range(y_start, y_end+1, step):
+            waypoints.append({'x': x, 'y' : y})
+    
+    return waypoints
+    
 
-# Main loop for server shutdown
-while True:
-    command = input("Enter 'x' to exit server: ").strip().lower()
-    if command == 'x':
-        print("🛑 Shutting down server...")
-        server_running = False  # Signal the accept_clients thread to stop
-        server_socket.close()  # Close the server socket
-        accept_thread.join()  # Wait for thread to exit
-        cv2.destroyAllWindows()
-        break
+if __name__ == "__main__":
+    # 
+    x_dim = int(input("Enter X dimension of explorable environment (in meters): "))-20
+    y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))-20
+    step = int(input("Enter step size (in meters) (default 1): "))
+
+    waypoints = generate_waypoints(x_dim=x_dim, y_dim=y_dim, step=step)
+    print(f"Waypoints created {x_dim}m x {y_dim} m at every {step} meters")
+
+    # Start server
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen()
+    print(f"🚀 Server listening on {HOST}:{PORT}")
+
+    # Start accepting clients in a separate thread
+    accept_thread = threading.Thread(target=accept_clients, args=(server_socket, waypoints,), daemon=True)
+    accept_thread.start()
+
+    # Main loop for server shutdown
+    while True:
+        command = input("Enter 'x' to exit server: ").strip().lower()
+        if command == 'x':
+            print("🛑 Shutting down server...")
+            server_running = False  # Signal the accept_clients thread to stop
+            server_socket.close()  # Close the server socket
+            accept_thread.join()  # Wait for thread to exit
+            cv2.destroyAllWindows()
+            break
