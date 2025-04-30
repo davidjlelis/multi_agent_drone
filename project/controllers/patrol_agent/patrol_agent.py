@@ -20,7 +20,12 @@ import os
 import requests
 from huggingface_hub import InferenceClient
 from huggingface_hub.errors import HfHubHTTPError
-import pickle
+import json
+from cryptography.fernet import Fernet
+sys.path.append("../..")  # Allow imports from the parent directory
+from key_manager import encryption_key  # Import the shared key
+
+cipher = Fernet(encryption_key)
 
 SAVE_PATH = "latest_detection.jpg"
 
@@ -103,45 +108,75 @@ class Mavic(Robot):
         # Connect to server to get waypoints
         self.server_ip = 'localhost'
         self.server_port = 5555
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.connect((self.server_ip, self.server_port))
         self.waypoints = self.get_waypoints_from_server()
-
-        #print(self.waypoints)
         print(f"Recieved {len(self.waypoints)} from waypoints from server")
 
     def get_waypoints_from_server(self):
         try:
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect((self.server_ip, self.server_port))
             print(f"[Waypoint Client] Connected to server at {self.server_ip}:{self.server_port}")
 
-            # First, read exactly 8 bytes to get the size of the incoming data
             data_size_bytes = b''
             while len(data_size_bytes) < 8:
-                packet = client_socket.recv(8 - len(data_size_bytes))
+                packet = self.client_socket.recv(8 - len(data_size_bytes))
                 if not packet:
                     raise Exception("Connection closed while reading data size.")
                 data_size_bytes += packet
-            
+
             data_size = int.from_bytes(data_size_bytes, byteorder='big')
             print(f"[Waypoint Client] Expecting {data_size} bytes of data.")
 
-            # Now, read exactly data_size bytes
             data = b''
             while len(data) < data_size:
-                packet = client_socket.recv(min(4096, data_size - len(data)))
+                packet = self.client_socket.recv(min(4096, data_size - len(data)))
                 if not packet:
                     raise Exception("Connection closed while reading waypoint data.")
                 data += packet
 
-            client_socket.close()
-
-            waypoints = pickle.loads(data)
-            print("Received pickled data, deserialized successfully.")
+            self.client_socket.sendall(b'READY')
+            waypoints = json.loads(data.decode('utf-8'))
+            print("[Waypoint Client] Received and parsed waypoints successfully.")
             return waypoints
 
         except Exception as e:
             print(f"[Waypoint Client] Error: {e}")
             sys.exit(1)
+
+
+    # def get_waypoints_from_server(self):
+    #     try:
+    #         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #         client_socket.connect((self.server_ip, self.server_port))
+    #         print(f"[Waypoint Client] Connected to server at {self.server_ip}:{self.server_port}")
+
+    #         data_size_bytes = b''
+    #         while len(data_size_bytes) < 8:
+    #             packet = client_socket.recv(8 - len(data_size_bytes))
+    #             if not packet:
+    #                 raise Exception("Connection closed while reading data size.")
+    #             data_size_bytes += packet
+
+    #         data_size = int.from_bytes(data_size_bytes, byteorder='big')
+    #         print(f"[Waypoint Client] Expecting {data_size} bytes of data.")
+
+    #         data = b''
+    #         while len(data) < data_size:
+    #             packet = client_socket.recv(min(4096, data_size - len(data)))
+    #             if not packet:
+    #                 raise Exception("Connection closed while reading waypoint data.")
+    #             data += packet
+
+    #         client_socket.sendall(b'READY')
+    #         client_socket.close()
+
+    #         waypoints = json.loads(data.decode('utf-8'))
+    #         print("Received json data, deserialized successfully.")
+    #         return waypoints
+
+    #     except Exception as e:
+    #         print(f"[Waypoint Client] Error: {e}")
+    #         sys.exit(1)
 
 
     def set_position(self, pos):
@@ -259,6 +294,9 @@ class Mavic(Robot):
         initial_yolo_time = -10
         self.last_yolo_time = initial_yolo_time
 
+        # Connect to server to send mapping information
+        client = self.client_socket
+
         while self.step(self.time_step) != -1:
             current_time = self.getTime()
 
@@ -298,6 +336,16 @@ class Mavic(Robot):
                     else:
                         raise
 
+            # Encrypt and send telemetry data for mapping
+            telemetry_json = json.dumps(telemetry_data)
+            encrypted_telemetry = cipher.encrypt(telemetry_json.encode('utf-8'))
+            try:
+                client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
+                client.sendall(encrypted_telemetry)
+            except BrokenPipeError:
+                print("⚠️ Connection lost while sending data. Skipping send.")
+                break  # Exit the run() loop if server is gone
+
 
             if altitude > self.target_altitude - 1:
                 if self.getTime() - t1 > 0.1:
@@ -314,6 +362,15 @@ class Mavic(Robot):
             self.front_right_motor.setVelocity(- (self.K_VERTICAL_THRUST + vertical_input + yaw_input + pitch_input + roll_input))
             self.rear_left_motor.setVelocity(- (self.K_VERTICAL_THRUST + vertical_input + yaw_input - pitch_input - roll_input))
             self.rear_right_motor.setVelocity(self.K_VERTICAL_THRUST + vertical_input - yaw_input - pitch_input + roll_input)
+        
+        # After loop:
+        try:
+            client.sendall(len(cipher.encrypt(b"BYE")).to_bytes(8, byteorder='big'))
+            client.sendall(cipher.encrypt(b"BYE"))
+        except:
+            print("⚠️ Server already closed. Skipping BYE.")
+        finally:
+            client.close()
 
 
 robot = Mavic()

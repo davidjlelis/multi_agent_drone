@@ -11,7 +11,6 @@ import math
 import requests
 import torch
 from PIL import Image
-import pickle
 
 sys.path.append("..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
@@ -21,6 +20,7 @@ HOST = '127.0.0.1'
 PORT = 5555
 MAX_CONNECTIONS_PER_WINDOW = 10  # Threshold for jamming detection
 WINDOW_DURATION = 5  # Time window in seconds
+PIXELS_PER_METER = 5
 
 cipher = Fernet(encryption_key)
 
@@ -29,20 +29,20 @@ connection_timestamps = []
 lock = threading.Lock()
 server_running = True  # Flag to control the server loop
 
-def detect_jamming():
-    """Detects if too many connections occur in a short time window."""
-    global connection_timestamps
-    with lock:
-        current_time = time.time()
-        # Remove timestamps older than WINDOW_DURATION
-        connection_timestamps = [t for t in connection_timestamps if current_time - t < WINDOW_DURATION]
+# def detect_jamming():
+#     """Detects if too many connections occur in a short time window."""
+#     global connection_timestamps
+#     with lock:
+#         current_time = time.time()
+#         # Remove timestamps older than WINDOW_DURATION
+#         connection_timestamps = [t for t in connection_timestamps if current_time - t < WINDOW_DURATION]
 
-        if len(connection_timestamps) >= MAX_CONNECTIONS_PER_WINDOW:
-            print("🚨 WARNING: Possible jamming detected! Too many connections in a short time.")
-            return True
-    return False
+#         if len(connection_timestamps) >= MAX_CONNECTIONS_PER_WINDOW:
+#             print("🚨 WARNING: Possible jamming detected! Too many connections in a short time.")
+#             return True
+#     return False
 
-def estimate_person_location(drone_loc_dict):
+def estimate_location(drone_loc_dict):
     x_d = drone_loc_dict['x_d']
     y_d = drone_loc_dict['y_d']
     altitude = drone_loc_dict['altitude']
@@ -86,22 +86,64 @@ def handle_client(conn, addr, waypoints):
     #     open(f"data_from_{addr}.txt", "w").close()
     try:
         # Send waypoints as JSON
-        waypoints_json = pickle.dumps(waypoints)
-        print(f"Sent {len(waypoints_json)} bytes of pickled data.")
-
+        waypoints_json = json.dumps(waypoints)
+        print(f"Sent {len(waypoints_json)} bytes of data.")
+        waypoints_bytes = waypoints_json.encode('utf-8')
         # First send the size of the data
-        conn.sendall(len(waypoints_json).to_bytes(8, byteorder='big'))
-        conn.sendall(waypoints_json)
+        conn.sendall(len(waypoints_bytes).to_bytes(8, byteorder='big'))
+        conn.sendall(waypoints_bytes)
         print(f"✅ Sent waypoints to {addr}")
-    except ConnectionResetError:
-        print(f"⚠️ Connection lost with {addr}")
+
+        try:
+            print("Waiting for client ready signal")
+            conn.settimeout(10)
+            ready_signal = conn.recv(8)
+
+            if not ready_signal:
+                print(f'No ready signal from {addr}. Closing connection')
+                return
+            print(f"Client {addr} is ready. Listening for telemetry...")
+            conn.settimeout(None) # Reset timeout
+        except:
+            print(f"⚠️ Timeout waiting for client ready signal from {addr}. Closing connection.")
+            return
+
+        # Listen for detections
+        while True:
+            data_size_bytes = conn.recv(8)
+            if not data_size_bytes:
+                break
+            data_size = int.from_bytes(data_size_bytes, byteorder='big')
+            data = b''
+
+            while len(data) < data_size:
+                packet = conn.recv(data_size - len(data))
+                if not packet:
+                    break
+                data += packet
+
+            if not data:
+                break
+
+            decrypted_data = cipher.decrypt(data)
+            detection = json.loads(decrypted_data.decode('utf-8'))
+            #print(detection)
+            # Assume detection includes drone state
+            x_p, y_p = estimate_location(detection)
+            draw_detection_on_map(x=x_p, y=y_p)
+
+    except (ConnectionResetError, BrokenPipeError) as e:
+        print(f"⚠️ Connection lost with {addr}: {e}")
+    except Exception as e:
+        print(f"⚠️ Connection lost with {addr}: {e}")
     finally:
-        conn.close()
-        print(f"🔌 Connection closed: {addr}")
+        pass
+        #conn.close()
+        #print(f"🔌 Connection closed: {addr}")
 
 def accept_clients(server_socket, waypoints):
     """Accepts client connections in a loop."""
-    print('accepting client')
+    print('accepting client\n')
     global server_running
     while server_running:
         try:
@@ -124,17 +166,42 @@ def generate_waypoints(x_dim, y_dim, step=1):
         for y in range(y_start, y_end+1, step):
             waypoints.append({'x': x, 'y' : y})
     
-    return waypoints
-    
+    return waypoints  
+
+def draw_detection_on_map(x, y):
+    global map_img, x_offset, y_offset
+
+    x_pix = int((x + x_offset) * PIXELS_PER_METER)
+    y_pix = int((y_offset - y) * PIXELS_PER_METER)  # Invert y-axis for image coordinates
+
+
+
+    if 0 <= x_pix < map_img.shape[1] and 0 <= y_pix < map_img.shape[0]:
+        cv2.circle(map_img, (x_pix, y_pix), 5, (0, 0, 255), -1)  # Red dot
+
+def create_blank_map(x_dim, y_dim):
+    global map_img, x_offset, y_offset
+    width = (x_dim * PIXELS_PER_METER)
+    height = (y_dim * PIXELS_PER_METER)
+    map_img = np.ones((height, width, 3), dtype=np.uint8) * 255
+    x_offset = x_dim // 2
+    y_offset = y_dim // 2
 
 if __name__ == "__main__":
-    # 
-    x_dim = int(input("Enter X dimension of explorable environment (in meters): "))-20
-    y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))-20
+    # Get environment dimension
+    x_dim = int(input("Enter X dimension of explorable environment (in meters): "))
+    y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))
     step = int(input("Enter step size (in meters) (default 1): "))
 
-    waypoints = generate_waypoints(x_dim=x_dim, y_dim=y_dim, step=step)
+    x_path = x_dim-20
+    y_path = y_dim-20
+
+    waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
     print(f"Waypoints created {x_dim}m x {y_dim} m at every {step} meters")
+
+    # Create blank map
+    create_blank_map(x_dim=x_dim, y_dim=y_dim)
+    window_name = "Enviornment Map"
 
     # Start server
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -148,8 +215,13 @@ if __name__ == "__main__":
 
     # Main loop for server shutdown
     while True:
-        command = input("Enter 'x' to exit server: ").strip().lower()
-        if command == 'x':
+        #command = input("\nEnter 'x' to exit server: ").strip().lower()
+        cv2.imshow(window_name, map_img)
+        print('Server and Environment Map has opened. Press ESC to close')
+        key = cv2.waitKey(0) & 0XFF
+
+        #if command == 'x':
+        if key == 27:
             print("🛑 Shutting down server...")
             server_running = False  # Signal the accept_clients thread to stop
             server_socket.close()  # Close the server socket
