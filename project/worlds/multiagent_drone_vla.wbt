@@ -16,14 +16,24 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/road/protos/StraightRoadSegment.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/traffic/protos/CrossRoadsTrafficLight.proto"
 IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Grass.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/ResidentialTower.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/ModernHouse.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/SimpleBuilding.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/traffic/protos/ParkingLines.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Asphalt.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/garden/protos/Pergolas.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/garden/protos/Swing.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/garden/protos/TableWithUmbrella.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/garden/protos/SwingCouch.proto"
 
 WorldInfo {
   defaultDamping Damping {
   }
 }
 Viewpoint {
-  orientation 0.2113249804152527 -0.2273913346886061 -0.950597145777867 4.638527165539083
-  position -4.251537189797753 -121.97724921697343 56.51401154839422
+  orientation 0.18523225059633117 -0.2216658317587971 -0.9573678876846133 4.63266682328028
+  position 5.032968938825362 -221.80320990949554 95.42045915647685
 }
 TexturedBackground {
 }
@@ -35,19 +45,49 @@ RectangleArena {
   floorAppearance Grass {
   }
 }
+TableWithUmbrella {
+  translation -14.47 9.47 0
+  rotation 0 0 1 -1.5707953071795862
+}
+TableWithUmbrella {
+  translation -4.51 1.35 0
+  rotation 0 0 1 -1.5707953071795862
+  name "table with umbrella(1)"
+}
+TableWithUmbrella {
+  translation -19.39 4.19 0
+  rotation 0 0 1 -1.5707953071795862
+  name "table with umbrella(2)"
+}
+TableWithUmbrella {
+  translation -11.11 -4.11 0
+  rotation 0 0 1 -1.5707953071795862
+  name "table with umbrella(3)"
+}
+SwingCouch {
+  translation -4.77446 8.40035 0
+  rotation 0 0 1 -2.3561953071795863
+}
+Floor {
+  translation 5 26.5 0.03
+  name "parking_lot"
+  size 21 26
+  appearance Asphalt {
+  }
+}
 Mavic2Pro {
-  translation -1 0.00622282 0.15867
+  translation 0 0 0.14741
   rotation 0.0024724981938072745 0.0011491742392552686 -0.9999962830687169 1.5768984882919632
   name "drone_1"
   controller "patrol_agent"
 }
 Pedestrian {
-  translation 10 10 1.27
+  translation 6.17 10 1.27
   rotation 0 0 1 -1.5707953071795862
   name "pedestrian_1"
 }
 Pedestrian {
-  translation 10.1 8.53 1.37
+  translation 6.12 8.53 1.37
   rotation 0 0 1 1.5708
   name "pedestrian_2"
   shirtColor 0.8 0.55 0.2
@@ -71,7 +111,18 @@ Pedestrian {
   shirtColor 0.25 0.25 1
 }
 Fountain {
-  translation 13.8 0 0
+  translation -11.87 2.51 0
+}
+Pergolas {
+  translation -19.24 9.18 0.23
+}
+Pergolas {
+  translation -4.5 -4.07 0.23
+  name "pergola(1)"
+}
+Swing {
+  translation -18.73 -3.04 0
+  rotation 0 0 -1 -0.7854053071795866
 }
 PedestrianCrossing {
   translation -6.28 -29.98 0.15
@@ -79,7 +130,7 @@ PedestrianCrossing {
   scale 0.48 0.4 0.5
 }
 Dog {
-  translation 8.93 9.6 0
+  translation 5.22 9.6 0
   rotation 0 0 1 -1.5707953071795862
 }
 TeslaModel3Simple {
@@ -104,7 +155,7 @@ CrossRoadsTrafficLight {
   controller "<none>"
 }
 HouseWithGarage {
-  translation 42.94 1.21004 0.05
+  translation 36.12 1.21004 0.05
   rotation 0 0 1 3.14159
 }
 RoadIntersection {
@@ -133,4 +184,32 @@ StraightRoadSegment {
   rotation 0 0 1 1.585
   name "road_y_short"
   length 11.55
+}
+ResidentialTower {
+  translation 8.04 46.42 0
+}
+ModernHouse {
+  translation 38.4 27.43 0
+  rotation 0 0 1 3.14159
+}
+SimpleBuilding {
+  translation -16.44 27.01 0
+  rotation 0 0 1 -1.5707953071795862
+}
+ParkingLines {
+  translation 2.6 14.98 0.05
+}
+ParkingLines {
+  translation 2.6 24.1 0.05
+}
+ParkingLines {
+  translation 2.6 32.89 0.05
+}
+ParkingLines {
+  translation -0.66 14.98 0.05
+  rotation 0 0 1 1.5708
+}
+ParkingLines {
+  translation -0.66004 26.93 0.05
+  rotation 0 0 1 1.5708
 }
