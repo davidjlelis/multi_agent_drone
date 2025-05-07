@@ -9,24 +9,38 @@ Supervised by: Ayan Dutta, PhD
 Purpose: Create a multi-agent vision-language-action (VLA) drone system that is used to survey an environment for dangerous scenarios or injured individuals.
 
 ## Methodology
-The framework is made up of four agents: a Vision-Language Model (VLM), a Large Language Model (LLM), Environment Exploration, and a Pathfinding algorithm.
+The framework is made up of four agents: an object detection model to detect people, a Vision-Language Model (VLM), a Large Language Model (LLM), Environment Exploration, and a Pathfinding algorithm. There are assumptions that the system takes:
 
-### Vision-Language Model (Florence2-base)
-The VLM utilized for this study is Florence2-base, that uses the onboard computer. The purpose of the VLM is to take an image and return text regarding the image. For this study, the VLM is prompted to describe the scene in the image. The drone takes the live images every 5 seconds of the environment and provides a description of the scene. The description is then passed to the LLM for further evaluation.
+1. The environment at some point has been mapped in the past via GPS or other mapping system.
+2. The environment the system is in is confirmed to be considered a disaster, therefore everyone in the environment needs some level of rescue but some may be injured and require specific assistance.
 
-Latest update (2025.04.26): The VLM is fully implemented but an issue in regards to performance has been observed. The full image-to-text description process takes a few seconds creating lags in the system.
+### Object Detection Model: YOLOv8
+YOLOv8 is an object detection model that is used to detect people. As it is assumed that people may be in the environment, the model will flag when a person is detected to a 90% confidence that is provided by the results of running the image through the model. This is also used as the VLM is computationally intensive and would slow down the system if it was solely running as the person detection model. If a person is detected in the image, the framework will move the image through the VLM.
 
-### Large Language Model (Qwen2.5-72B-Instruct)
-The LLM utilized for this study is Qwen2.5-72B-Instruct, where the text description from the VLM is evaulated via a Cloud API from Hugging Face. The LLM is prompted to analyze the text description and determine if the scene contains an urgent situations in regards to an injured person or anything dangerous. If an urgent situation is found, LLM returns a "Yes" and a set of instructions to assist any individuals in the scene. The next steps would then to return location points to a server that acts as the middle-man between the drones and first responders.
+### Vision-Language Model (VLM): Florence2-base
+The VLM being used in the framework is Florence2-base, a lightweight VLM that can provide basic text from an image. The purpose of the VLM is to provide a description of the image that the object detection model had flagged. The description is then moved through the LLM. 
 
-Latest update (2025.04.26): The LLM is fully implmented and provides the confirmation and instructions when urgent scenes are described. Due to some limitations or unexpected observations, the VLM-LLM process is discovering unintended dangerous scenes. For example due to the similarly sandy color of the wooden floor, when the drone takes an image of a single person on the ground, the VLM describes the scene as "A person walking through the desert", which is then sent to the LLM which confirms that the text description is dangerous and provides feedback. While the scene is actually dangerous, the intention of the person wasn't to place them in an urgent scene.
+### Large-Language Model (LLM): Qwen2.5-72B
+The LLM used in the framework is Qwen2.5-72B and is ran online as it is computationally intensive, more so than the VLM. The image description is ran through the model with the given prompt:
 
-### Environment Exploration (SLAM)
-The drone is defaulted to explore the environment for mapping and to record any obstacles. While the drone is mapping, it is also performing the VLM-to-LLM process to locate urgent situations.
+            You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
+            safe or injured. Given the description below, provide a response.
 
-Latest update (2025.04.26): TBD
+            Description: "{description}"
 
-### Pathfinding Algorithm (RRT)
-Once an urgent scene is found, the drone returns the location of the scene to a server that acts as the middle-man between the drones and first responders. While notifying the first responders, a pathfinding algorithm is initiated to direct first responders to the fastest path to the scene.
+            Respond with "Person Found" if the description contains a person. If the description contains a person, determine 
+            if the person may be injured and what assistance they would need. Format the response in a JSON format:
 
-Latest update (2025.04.26): TBD
+            {{
+                "person_found": True or False,
+                "requires_assistance": True or False,
+                "assistance_instructions": "instructions"
+            }}
+
+As seen, the model is instructed to return a JSON string in order to easily detect if a person is found, if they may require special assistance, and the instructions to assist the victim. This will be sent to the server along with the coordinates of the scene to pass onto first responders to evacuate the victim as necessary.
+
+### Environment Exploration
+It is assumed that the environment that the system is placed in as been mapped before, however due to most disaster events causing significant damage and change to an environment, it can't be assumed that the environment is the same as originally mapped. The assumption is placed so drones can easily navigate the environment given previous knowledge, but should also be able to adapt to new environmental changes. This part of the framework will tackle that aspect by including obstacle avoidance techniques. (TBD as of 2025.05.06)
+
+### Pathfinding Algorithm: A* or RRT
+Once a victim is found, the finding the fastest path is crucial to keep them safe. Combining the assumption of the environment being previously mapped and the new knowledge of any changes in the environment, a path from the homebase of the drone system to the victim will be made. (TBD as of 2025.05.06)
