@@ -1,0 +1,18 @@
+# Blender 4.4.3 MTL File: 'None'
+# www.blender.org
+
+newmtl Ch01_body
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 3
+Pm 0.500000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd Ch01_1001_Diffuse.png
+map_Ks Ch01_1001_Specular.png
+map_Pr Ch01_1001_Glossiness.png
+map_d Ch01_1001_Diffuse.png
+map_Bump -bm 1.000000 Ch01_1001_Normal.png

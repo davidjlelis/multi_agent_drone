@@ -4,7 +4,6 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/dji/mavic/protos/Mavic2Pro.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/humans/pedestrian/protos/Pedestrian.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/animals/protos/Dog.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/tesla/TeslaModel3Simple.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/BusStop.proto"
@@ -32,8 +31,8 @@ WorldInfo {
   }
 }
 Viewpoint {
-  orientation 0.18523225059633117 -0.2216658317587971 -0.9573678876846133 4.63266682328028
-  position 5.032968938825362 -221.80320990949554 95.42045915647685
+  orientation 0.2671458063674483 -0.12403059642983869 -0.9556408997576151 3.8153686378277474
+  position 84.61811532188278 -72.75291877264613 61.8079527756936
 }
 TexturedBackground {
 }
@@ -81,34 +80,65 @@ Mavic2Pro {
   name "drone_1"
   controller "patrol_agent"
 }
-Pedestrian {
-  translation 6.17 10 1.27
-  rotation 0 0 1 -1.5707953071795862
-  name "pedestrian_1"
+Transform {
+  translation 6.17 10 0.02
+  rotation 0 1 0 0
+  scale 0.0115 0.0115 0.0115
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_brian.dae"
+      ]
+    }
+  ]
 }
-Pedestrian {
-  translation 6.12 8.53 1.37
-  rotation 0 0 1 1.5708
-  name "pedestrian_2"
-  shirtColor 0.8 0.55 0.2
+Transform {
+  translation 6.12 8.53 0.06
+  rotation 0 0 1 3.14159
+  scale 0.0115 0.0115 0.0115
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_david.dae"
+      ]
+    }
+  ]
 }
-Pedestrian {
-  translation -24.2087 15.792 1.32
-  rotation -8.30716e-08 5.1913e-07 1 2.3562
-  name "pedestrian_3"
-  shirtColor 1 0.25 0.25
+Transform {
+  translation 5.9813 42.792 14.76
+  rotation 0 1 0 0
+  scale 0.0115 0.0115 0.0115
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_elizabeth.dae"
+      ]
+    }
+  ]
 }
-Pedestrian {
-  translation -19.28 -16.99 1.37
-  rotation -1.99309e-06 1.95034e-08 1 0.523605
-  name "pedestrian_4"
-  shirtColor 0.25 0.25 1
+Transform {
+  translation -19.28 -16.99 0.11
+  rotation 0 0 1 2.0944
+  scale 0.0115 0.0115 0.0115
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_leonard.dae"
+      ]
+    }
+  ]
 }
-Pedestrian {
-  translation -6.36766 -31.9348 0.267229
-  rotation 0.711347743906322 -0.23196591648950152 0.6634577611472875 2.84573
-  name "victim_1"
-  shirtColor 0.25 0.25 1
+Transform {
+  translation -6.36766 -32.6548 0.21
+  rotation -1 -1.20631e-07 2.39745e-09 1.5708
+  scale 0.0115 0.0115 0.0115
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_martha.dae"
+      ]
+    }
+  ]
 }
 Fountain {
   translation -11.87 2.51 0
@@ -125,7 +155,7 @@ Swing {
   rotation 0 0 -1 -0.7854053071795866
 }
 PedestrianCrossing {
-  translation -6.28 -29.98 0.15
+  translation -6.28 -29.98 -0.03
   rotation 0 0 1 -1.5707953071795862
   scale 0.48 0.4 0.5
 }

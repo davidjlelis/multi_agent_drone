@@ -24,6 +24,7 @@ import json
 from cryptography.fernet import Fernet
 sys.path.append("../..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
+import re
 
 cipher = Fernet(encryption_key)
 
@@ -261,14 +262,20 @@ class Mavic(Robot):
 
     def is_emergency(self, description: str) -> bool:
         prompt = f"""
-            You are a search-and-rescue assistant in a project simulation. Assume any 3D models of people are real people.
-            Determine if the following description indicates a dangerous or emergency situation. Lean on the side of cautious.
+            You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
+            safe or injured. Given the description below, provide a response.
 
             Description: "{description}"
 
-            Respond with "Yes" or "No". If "Yes", provide guidance for any witnesses or victims in the scene. Also provide
-            instructions for first responders. Format the response in a JSON format.
-            """
+            Respond with "Person Found" if the description contains a person. If the description contains a person, determine 
+            if the person may be injured and what assistance they would need. Format the response in a JSON format:
+
+            {{
+                "person_found": True or False,
+                "requires_assistance": True or False,
+                "assistance_instructions": "instructions"
+            }}
+        """
         
         completion = client.chat.completions.create(
             model="Qwen/Qwen2.5-72B-Instruct",
@@ -282,6 +289,27 @@ class Mavic(Robot):
         )
 
         return completion.choices[0].message["content"]
+    
+    def extract_json_from_text(self, text):
+        """
+        Extracts and returns a valid JSON object (as a dict) from a string containing additional content.
+        """
+
+        print(text)
+        try:
+            # Use regex to find a JSON-like block in the text
+            match = re.search(r'\{[\s\S]*\}', text)
+            if match:
+                json_str = match.group(0)
+                # Convert to dict
+                return json.loads(json_str)
+            else:
+                raise ValueError("No JSON object found in the text.")
+        except json.JSONDecodeError as e:
+            print("Invalid JSON format:", e)
+        except Exception as e:
+            print("Error:", e)
+        return {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
 
     def run(self):
         print(f'Starting up {self.getName()}')
@@ -298,7 +326,7 @@ class Mavic(Robot):
         client = self.client_socket
 
         while self.step(self.time_step) != -1:
-            current_time = self.getTime()
+            # current_time = self.getTime()
 
             roll, pitch, yaw = self.imu.getRollPitchYaw()
             x_pos, y_pos, altitude = self.gps.getValues()
@@ -312,29 +340,72 @@ class Mavic(Robot):
 
             raw_image = self.camera.getImage()
             img_array = np.frombuffer(raw_image, dtype=np.uint8).reshape((self.camera.getHeight(), self.camera.getWidth(), 4))
+            bgr_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR) # YOLO
             rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
             pil_image = Image.fromarray(rgb_image)
 
-            # VLM to LLM process
-            if current_time - self.last_yolo_time >= 10.0:
-                self.last_yolo_time = current_time
+            # Run YOLOv8 to find people
+            results = yolo_model(bgr_image, verbose=False)[0]
+            person_detected = False
+            for result in results.boxes.data:
+                x1, y1, x2, y2, conf, cls = result.tolist()
+                if int(cls) == 0 and conf > 0.9: # If person is detected to a 90% confidence
+                    person_detected = True
+                    # est_x, est_y = self.estimate_person_location(telemetry_data)
+                    cv2.rectangle(bgr_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
 
-                # VLM Processing
+            if person_detected:
+                #print("YOLO has detected a person. Running Florence-2 to get image description")
                 prompt = "Describe the image"
                 inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
                 output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
                 generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
-                print("Florence-2 Output:", generated_text)
-                
+                cv2.imwrite("yolo_detection.jpg", bgr_image)
+                #print("Person confirmed. Florence-2 Output:", generated_text)
+                response = {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
                 try:
                     # LLM Processing
                     LLM_response = self.is_emergency(generated_text)
-                    print('LLM Response:', LLM_response)
+                    #print('LLM Response:', LLM_response)
+                    response = self.extract_json_from_text(LLM_response)
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
                         print('Max calls for free trier credits.')
                     else:
                         raise
+                
+                #print(response)
+
+                if response['person_found']:
+                    cv2.putText(bgr_image, f"Person found...", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
+                    cv2.imwrite("vlm_detection.jpg", bgr_image)
+
+                    
+
+                    
+
+            # # VLM to LLM process
+            # if current_time - self.last_yolo_time >= 10.0:
+            #     self.last_yolo_time = current_time
+
+            #     # VLM Processing
+            #     prompt = "Describe the image"
+            #     inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
+            #     output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
+            #     generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
+            #     print("Florence-2 Output:", generated_text)
+                
+            #     try:
+            #         # LLM Processing
+            #         LLM_response = self.is_emergency(generated_text)
+            #         print('LLM Response:', LLM_response)
+            #     except HfHubHTTPError as e:
+            #         if "402 Client Error" in str(e):
+            #             print('Max calls for free trier credits.')
+            #         else:
+            #             raise
 
             # Encrypt and send telemetry data for mapping
             telemetry_json = json.dumps(telemetry_data)
