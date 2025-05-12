@@ -48,7 +48,16 @@ class Node:
         self.size = size                # size
         self.node_type = node_type      # open space (0), obstacle (1), start (2), goal (3)
         self.state = 0
-        self.value = 1
+        self.neighbors = []
+        
+        # A start values
+        self.f = 0
+        self.g = 1
+        self.h = 0
+        pass
+
+    def __repr__(self) -> str:
+        return f"Node({self.x}, {self.y}, type={self.node_type})"
         pass
 
     def draw(self, image, flipped_y):
@@ -77,7 +86,7 @@ class Map:
             for y in range(height)
         ]
         self.start_node = None
-        self.goal_nodes = []
+        self.goal_node = None
 
     def setObstacles(self, obstacles):
         # for row in self.nodes:
@@ -98,8 +107,30 @@ class Map:
         for row in self.nodes:
             for node in row:
                 if node.x == goal['x']+50 and node.y == goal['y']+50:
-                    self.goal_nodes.append(node)
+                    self.goal_node = node
                     node.node_type = 3
+
+    def setNeighbors(self, allow_diagnols=False):
+        directions = [
+            (0,1),
+            (1,0),
+            (0,-1),
+            (-1,0)
+        ]
+
+        if allow_diagnols:
+            directions.append((1,1), (-1,1), (1,-1), (-1,-1))
+
+        for y in range(self.height):
+            for x in range(self.width):
+                node = self.nodes[y][x]
+                for dx, dy in directions:
+                    neighbor_x, neighbor_y = x+dx, y+dy
+                    if 0 <= neighbor_x < self.width and 0 <= neighbor_y < self.height:
+                        neighbor = self.nodes[neighbor_y][neighbor_x]
+                        if neighbor.node_type != 1:
+                            node.neighbors.append(neighbor)
+        pass
 
     def getMap(self):
         width = self.width * self.cell_size
@@ -114,10 +145,44 @@ class Map:
 
         return img
     
-    def pathfinding_Astar(self):
+class pathfinding:
+    def __init__(self, map_grid) -> None:
+        self.map_grid = map_grid
         pass
 
-    def pathfinding_RTT(self):
+    def setHueristic(self):
+        #print(f'Start node: {self.map_grid.start_node}, End node: {self.map_grid.goal_node}')
+        goal_node = self.map_grid.goal_node
+        for row in self.map_grid.nodes:
+            for node in row:
+                hn = round(math.sqrt((node.x-goal_node.x)**2 +(node.y-goal_node.y)**2), 2)
+                node.h = hn
+        pass
+
+    def Astar(self):
+        self.setHueristic()
+
+        path_to_goal = []
+
+        open_list = []
+        closed_list = []
+
+        open_list.append(self.map_grid.start_node)
+
+        while not open_list:
+            q = None
+            q_f = None
+            for node in open_list:
+                if q_f is None or (node.g + node.h) < q_f:
+                    q = node
+                    q_f = node.g + node.h
+            
+            
+
+
+        return path_to_goal
+
+    def RTT():
         pass
 
 def estimate_location(drone_loc_dict):
@@ -306,6 +371,10 @@ if __name__ == "__main__":
 
     goal = {'x': -22, 'y': 40}
     map_grid.setGoal(goal)
+
+    map_grid.setNeighbors()
+
+    path = pathfinding(map_grid=map_grid).Astar()
 
     # Get inital Grid/Environment/Map State
     map_img = map_grid.getMap()
