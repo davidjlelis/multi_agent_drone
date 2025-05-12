@@ -145,67 +145,8 @@ class Mavic(Robot):
             sys.exit(1)
 
 
-    # def get_waypoints_from_server(self):
-    #     try:
-    #         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #         client_socket.connect((self.server_ip, self.server_port))
-    #         print(f"[Waypoint Client] Connected to server at {self.server_ip}:{self.server_port}")
-
-    #         data_size_bytes = b''
-    #         while len(data_size_bytes) < 8:
-    #             packet = client_socket.recv(8 - len(data_size_bytes))
-    #             if not packet:
-    #                 raise Exception("Connection closed while reading data size.")
-    #             data_size_bytes += packet
-
-    #         data_size = int.from_bytes(data_size_bytes, byteorder='big')
-    #         print(f"[Waypoint Client] Expecting {data_size} bytes of data.")
-
-    #         data = b''
-    #         while len(data) < data_size:
-    #             packet = client_socket.recv(min(4096, data_size - len(data)))
-    #             if not packet:
-    #                 raise Exception("Connection closed while reading waypoint data.")
-    #             data += packet
-
-    #         client_socket.sendall(b'READY')
-    #         client_socket.close()
-
-    #         waypoints = json.loads(data.decode('utf-8'))
-    #         print("Received json data, deserialized successfully.")
-    #         return waypoints
-
-    #     except Exception as e:
-    #         print(f"[Waypoint Client] Error: {e}")
-    #         sys.exit(1)
-
-
     def set_position(self, pos):
         self.current_pose = [float(p) for p in pos]  # Ensure all positions are floats
-
-
-    # def move_to_target(self):
-    #     if self.target_position[0:2] == [0, 0]:
-    #         self.target_position[0:2] = self.waypoints[0]
-
-    #     if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
-    #         self.target_index = (self.target_index + 1) % len(self.waypoints)
-    #         self.target_position[0:2] = self.waypoints[self.target_index]
-
-    #     self.target_position[2] = np.arctan2(
-    #         self.target_position[1] - self.current_pose[1],
-    #         self.target_position[0] - self.current_pose[0]
-    #     )
-
-    #     angle_left = self.target_position[2] - self.current_pose[5]
-    #     angle_left = (angle_left + 2 * np.pi) % (2 * np.pi)
-    #     if angle_left > np.pi:
-    #         angle_left -= 2 * np.pi
-
-    #     yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
-    #     pitch_disturbance = clamp(np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
-
-    #     return yaw_disturbance, pitch_disturbance
         
     def move_to_target(self):
         # Ensure target_position and current_pose are floats
@@ -316,14 +257,15 @@ class Mavic(Robot):
         t1 = self.getTime()
 
         roll_disturbance = pitch_disturbance = yaw_disturbance = 0
-        #waypoints = [[-10, -25], [-20, 20], [20, -20], [20, 20]]
-        #self.target_altitude = 10
 
         initial_yolo_time = -10
         self.last_yolo_time = initial_yolo_time
 
         # Connect to server to send mapping information
         client = self.client_socket
+
+        # initiate confidence values
+        best_conf = 0.0
 
         while self.step(self.time_step) != -1:
             # current_time = self.getTime()
@@ -335,7 +277,9 @@ class Mavic(Robot):
 
             telemetry_data = {
                 "x_d": x_pos, "y_d": y_pos, "altitude": altitude,
-                "roll": roll, "pitch": pitch, "yaw": yaw
+                "roll": roll, "pitch": pitch, "yaw": yaw,
+                "conf": 0.0, "person_found": False, "requires_assistance": False,
+                "assistance_instructions": ''
             }
 
             raw_image = self.camera.getImage()
@@ -347,13 +291,23 @@ class Mavic(Robot):
             # Run YOLOv8 to find people
             results = yolo_model(bgr_image, verbose=False)[0]
             person_detected = False
+
             for result in results.boxes.data:
                 x1, y1, x2, y2, conf, cls = result.tolist()
-                if int(cls) == 0 and conf > 0.9: # If person is detected to a 90% confidence
-                    person_detected = True
-                    # est_x, est_y = self.estimate_person_location(telemetry_data)
-                    cv2.rectangle(bgr_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                    cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                
+                if int(cls) == 0: # If person is detected to a 90% confidence
+                    # print(conf)
+                    if conf > 0.8:
+                        # if the new conf is better than the currently best conf, set best_conf to new conf
+                        if conf > best_conf:
+                            best_conf = conf
+                        # else, there isn't a better conf and set person_detected is True
+                        else:
+                            person_detected = True
+                            # est_x, est_y = self.estimate_person_location(telemetry_data)
+                            cv2.rectangle(bgr_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                            cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                            telemetry_data['conf'] = best_conf
 
             if person_detected:
                 #print("YOLO has detected a person. Running Florence-2 to get image description")
@@ -369,6 +323,11 @@ class Mavic(Robot):
                     LLM_response = self.is_emergency(generated_text)
                     #print('LLM Response:', LLM_response)
                     response = self.extract_json_from_text(LLM_response)
+
+                    #insert into client response
+                    telemetry_data['person_found'] = response['person_found']
+                    telemetry_data['requires_assistance'] = response['requires_assistance']
+                    telemetry_data['assistance_instructions'] = response['assistance_instructions']
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
                         print('Max calls for free trier credits.')
@@ -377,45 +336,22 @@ class Mavic(Robot):
                 
                 #print(response)
 
-                if response['person_found']:
+                if telemetry_data['person_found']:
                     cv2.putText(bgr_image, f"Person found...", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
                     cv2.imwrite("vlm_detection.jpg", bgr_image)
 
-                    
+                    # Encrypt and send telemetry data for mapping
+                    telemetry_json = json.dumps(telemetry_data)
+                    encrypted_telemetry = cipher.encrypt(telemetry_json.encode('utf-8'))
+                    try:
+                        client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
+                        client.sendall(encrypted_telemetry)
+                    except BrokenPipeError:
+                        print("⚠️ Connection lost while sending data. Skipping send.")
+                        break  # Exit the run() loop if server is gone
 
-                    
-
-            # # VLM to LLM process
-            # if current_time - self.last_yolo_time >= 10.0:
-            #     self.last_yolo_time = current_time
-
-            #     # VLM Processing
-            #     prompt = "Describe the image"
-            #     inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
-            #     output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
-            #     generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
-            #     print("Florence-2 Output:", generated_text)
-                
-            #     try:
-            #         # LLM Processing
-            #         LLM_response = self.is_emergency(generated_text)
-            #         print('LLM Response:', LLM_response)
-            #     except HfHubHTTPError as e:
-            #         if "402 Client Error" in str(e):
-            #             print('Max calls for free trier credits.')
-            #         else:
-            #             raise
-
-            # Encrypt and send telemetry data for mapping
-            telemetry_json = json.dumps(telemetry_data)
-            encrypted_telemetry = cipher.encrypt(telemetry_json.encode('utf-8'))
-            try:
-                client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
-                client.sendall(encrypted_telemetry)
-            except BrokenPipeError:
-                print("⚠️ Connection lost while sending data. Skipping send.")
-                break  # Exit the run() loop if server is gone
+                best_conf = 0.0
 
 
             if altitude > self.target_altitude - 1:

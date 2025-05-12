@@ -31,8 +31,8 @@ WorldInfo {
   }
 }
 Viewpoint {
-  orientation 0.2671458063674483 -0.12403059642983869 -0.9556408997576151 3.8153686378277474
-  position 84.61811532188278 -72.75291877264613 61.8079527756936
+  orientation 0.5858948096735728 -0.5701976554174685 -0.5758488566924397 4.19273161468374
+  position 4.9696976658938325 19.749947085815503 151.87984267911088
 }
 TexturedBackground {
 }
@@ -81,7 +81,7 @@ Mavic2Pro {
   controller "patrol_agent"
 }
 Transform {
-  translation 6.17 10 0.02
+  translation -22.19 40 0.02
   rotation 0 1 0 0
   scale 0.0115 0.0115 0.0115
   children [
@@ -93,7 +93,7 @@ Transform {
   ]
 }
 Transform {
-  translation 6.12 8.53 0.06
+  translation 45.12 8.52 0.06
   rotation 0 0 1 3.14159
   scale 0.0115 0.0115 0.0115
   children [
@@ -185,7 +185,7 @@ CrossRoadsTrafficLight {
   controller "<none>"
 }
 HouseWithGarage {
-  translation 36.12 1.21004 0.05
+  translation 36 1 0
   rotation 0 0 1 3.14159
 }
 RoadIntersection {
@@ -216,14 +216,14 @@ StraightRoadSegment {
   length 11.55
 }
 ResidentialTower {
-  translation 8.04 46.42 0
+  translation 8 45 0
 }
 ModernHouse {
-  translation 38.4 27.43 0
+  translation 38 27 0
   rotation 0 0 1 3.14159
 }
 SimpleBuilding {
-  translation -16.44 27.01 0
+  translation -16 27 0
   rotation 0 0 1 -1.5707953071795862
 }
 ParkingLines {

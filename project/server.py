@@ -20,7 +20,6 @@ HOST = '127.0.0.1'
 PORT = 5555
 MAX_CONNECTIONS_PER_WINDOW = 10  # Threshold for jamming detection
 WINDOW_DURATION = 5  # Time window in seconds
-PIXELS_PER_METER = 5
 
 cipher = Fernet(encryption_key)
 
@@ -41,6 +40,108 @@ server_running = True  # Flag to control the server loop
 #             print("🚨 WARNING: Possible jamming detected! Too many connections in a short time.")
 #             return True
 #     return False
+
+class Node:
+    def __init__(self, x, y, size, node_type = 0) -> None:
+        self.x = x                      # x coordinate
+        self.y = y                      # y coordinate
+        self.size = size                # size
+        self.node_type = node_type      # open space (0), obstacle (1)
+        pass
+
+    def draw(self, image):
+        color = (255, 255, 255) if self.node_type == 0 else (0, 0, 0)
+
+        top_left = (self.x * self.size, self.y * self.size)
+        bottom_right = ((self.x + 1) * self.size, (self.y + 1) * self.size)
+        cv2.rectangle(image, top_left, bottom_right, color, -1)  # Fill
+        cv2.rectangle(image, top_left, bottom_right, (200, 200, 200), 1)
+
+class Map:
+    def __init__(self, width, height, cell_size, grid_data):
+        self.width = width
+        self.height = height
+        self.cell_size = cell_size
+        self.nodes = [
+            [Node(x, y, cell_size, grid_data[y][x]) for x in range(width)]
+            for y in range(height)
+        ]
+
+    def setObstacles(self, obstacles):
+        # for row in self.nodes:
+        #     for node in row:
+        #         print(node.x, ',', node.y, ',', node.node_type)
+        for obstacle in obstacles:
+            for row in self.nodes:
+                for node in row:
+                    if node.x >= obstacle['lower_x']+50 and node.x <= obstacle['upper_x']+50 and node.y >= obstacle['lower_y']+50 and node.y <= obstacle['upper_y']+50:
+                        node.node_type = 1
+
+
+
+    def draw(self):
+        img = np.ones((self.height * self.cell_size, self.width * self.cell_size, 3), dtype=np.uint8) * 255
+        for row in self.nodes:
+            for node in row:
+                node.draw(img)
+        cv2.imshow("Grid Map", img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+# class Node:
+#     def __init__(self, x_loc, y_loc, node_type) -> None:
+#         self.x_loc = x_loc          # x coordinate
+#         self.y_loc = y_loc          # y coordinate
+#         self.node_type = node_type  # node type (open space [0]/obstacle [1]/path [2])
+#         pass
+
+#     def printLoc(self):
+#         print(self.x_loc,',', self.y_loc, self.node_type)
+    
+#     def getNode(self):
+#         return self
+
+# class Map:
+#     def __init__(self, x_dim, y_dim) -> None:
+#         self.x_dim = x_dim
+#         self.y_dim = y_dim
+#         self.grid = []
+#         for i in range(y_dim):
+#             self.grid.append([])
+#             for j in range(x_dim):
+#                 #print('creating Node', j, i)
+#                 self.grid[i].append(Node(j, i, 0))
+#         pass
+
+#     def printMap(self):
+#         for i in range(len(self.grid)):
+#             # print(self.grid[i])
+#             for j in range(len(self.grid[i])):
+#                 self.grid[i][j].printLoc()
+
+#     def getMap(self):
+#         return self.grid
+    
+#     def setObstacles(self, obstacles):
+#         for obstacle in obstacles:
+#             print(obstacle)
+#             # translate to (0 to 100, 0 to 100) coordinates vs (-50 to 50, -50 to 50)
+#             obstacle['lower_x'] = obstacle['lower_x'] + 50
+#             obstacle['upper_x'] = obstacle['upper_x'] + 50
+#             obstacle['lower_y'] = obstacle['lower_y'] + 50
+#             obstacle['upper_y'] = obstacle['upper_y'] + 50
+
+#         print('Updates Coordinates')
+#         for obstacle in obstacles:
+#             for i in range(len(self.grid)):
+#                 for j in range(len(self.grid[i])):
+#                     if self.grid[i][j].x_loc >= obstacle['lower_x'] and self.grid[i][j].x_loc <= obstacle['upper_x'] and self.grid[i][j].y_loc >= obstacle['lower_y'] and self.grid[i][j].y_loc <= obstacle['upper_y']:
+#                         self.grid[i][j].node_type = 1
+#                         # print(self.grid[i][j].x_loc, self.grid[i][j].y_loc, self.grid[i][j].node_type)
+#         pass
+
+#     def drawMap(self):
+#         pass
 
 def estimate_location(drone_loc_dict):
     x_d = drone_loc_dict['x_d']
@@ -127,10 +228,12 @@ def handle_client(conn, addr, waypoints):
 
             decrypted_data = cipher.decrypt(data)
             detection = json.loads(decrypted_data.decode('utf-8'))
-            #print(detection)
+            print(detection)
             # Assume detection includes drone state
+            x_d, y_d = detection['x_d'], detection['y_d']
             x_p, y_p = estimate_location(detection)
-            draw_detection_on_map(x=x_p, y=y_p)
+            #print(f'Person found nearby {x_p},{y_p}. Drone location at {x_d}, {y_d}')
+            #draw_detection_on_map(x=x_p, y=y_p)
 
     except (ConnectionResetError, BrokenPipeError) as e:
         print(f"⚠️ Connection lost with {addr}: {e}")
@@ -168,24 +271,35 @@ def generate_waypoints(x_dim, y_dim, step=1):
     
     return waypoints  
 
-def draw_detection_on_map(x, y):
-    global map_img, x_offset, y_offset
+# def draw_detection_on_map(x, y):
+#     global map_img, x_offset, y_offset
 
-    x_pix = int((x + x_offset) * PIXELS_PER_METER)
-    y_pix = int((y_offset - y) * PIXELS_PER_METER)  # Invert y-axis for image coordinates
+#     x_pix = int((x + x_offset) * PIXELS_PER_METER)
+#     y_pix = int((y_offset - y) * PIXELS_PER_METER)  # Invert y-axis for image coordinates
 
+#     if 0 <= x_pix < map_img.shape[1] and 0 <= y_pix < map_img.shape[0]:
+#         cv2.circle(map_img, (x_pix, y_pix), 5, (0, 0, 255), -1)  # Red dot
 
+def create_blank_map(x_dim, y_dim, cell_size=5, line_color=(0,0,0), thickness=1):
+    #global map_img, x_offset, y_offset
+    
+    # Size of grid/image
+    width = (x_dim * cell_size)
+    height = (y_dim * cell_size)
 
-    if 0 <= x_pix < map_img.shape[1] and 0 <= y_pix < map_img.shape[0]:
-        cv2.circle(map_img, (x_pix, y_pix), 5, (0, 0, 255), -1)  # Red dot
-
-def create_blank_map(x_dim, y_dim):
-    global map_img, x_offset, y_offset
-    width = (x_dim * PIXELS_PER_METER)
-    height = (y_dim * PIXELS_PER_METER)
+    # create white background
     map_img = np.ones((height, width, 3), dtype=np.uint8) * 255
-    x_offset = x_dim // 2
-    y_offset = y_dim // 2
+
+    # draw vertical lines
+    for i in range(x_dim+1):
+        cv2.line(map_img, (i*cell_size, 0), (i*cell_size, height), line_color, thickness)
+
+    for j in range(y_dim+1):
+        cv2.line(map_img, (0, j*cell_size), (width, j*cell_size), line_color, thickness)
+    return map_img
+    # map_img = np.ones((height, width, 3), dtype=np.uint8) * 255
+    # x_offset = x_dim // 2
+    # y_offset = y_dim // 2
 
 if __name__ == "__main__":
     # Get environment dimension
@@ -197,11 +311,67 @@ if __name__ == "__main__":
     y_path = y_dim-20
 
     waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
-    print(f"Waypoints created {x_dim}m x {y_dim} m at every {step} meters")
+    print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
 
-    # Create blank map
-    create_blank_map(x_dim=x_dim, y_dim=y_dim)
-    window_name = "Enviornment Map"
+    # Create blank map (visual)
+    #map_img = create_blank_map(x_dim=x_dim, y_dim=y_dim)
+    #window_name = "Environment Map"
+
+    # Create blank map (array)
+    # map = Map(x_dim=x_dim,y_dim=y_dim)
+
+    # grid_data = [
+    #     [0, 0, 1, 0, 0],
+    #     [0, 1, 1, 0, 0],
+    #     [0, 0, 0, 0, 1],
+    #     [1, 0, 0, 1, 0],
+    # ]
+
+    grid_data = []
+
+    for i in range(y_dim):
+        grid_data.append([])
+        for j in range(x_dim):
+            grid_data[i].append(0)
+
+    # Create and display the map
+    map_grid = Map(width=x_dim, height=y_dim, cell_size=5, grid_data=grid_data)
+    obstacles = [
+        {
+            'name': 'obstacle_1'
+            , 'lower_x': 28
+            , 'upper_x': 44
+            , 'lower_y': -8
+            , 'upper_y': 9
+        }, 
+        {
+            'name': 'obstacle_2'
+            , 'lower_x': -27
+            , 'upper_x': -5
+            , 'lower_y': 16
+            , 'upper_y': 38
+        }, 
+        {
+            'name': 'obstacle_3'
+            , 'lower_x': 23
+            , 'upper_x': 47
+            , 'lower_y': 22
+            , 'upper_y': 38
+        }, 
+        {
+            'name': 'obstacle_4'
+            , 'lower_x': 2
+            , 'upper_x': 13
+            , 'lower_y': 40
+            , 'upper_y': 50
+        }
+    ]
+
+    map_grid.setObstacles(obstacles)
+    map_grid.draw()
+
+    # map.setObstacles(obstacles=obstacles)
+    # map.printMap()
 
     # Start server
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -216,7 +386,7 @@ if __name__ == "__main__":
     # Main loop for server shutdown
     while True:
         #command = input("\nEnter 'x' to exit server: ").strip().lower()
-        cv2.imshow(window_name, map_img)
+        #cv2.imshow(window_name, map_img)
         print('Server and Environment Map has opened. Press ESC to close')
         key = cv2.waitKey(0) & 0XFF
 
