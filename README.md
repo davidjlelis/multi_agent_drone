@@ -12,7 +12,8 @@ Purpose: Create a multi-agent vision-language-action (VLA) drone system that is 
 The framework is made up of four agents: an object detection model to detect people, a Vision-Language Model (VLM), a Large Language Model (LLM), Environment Exploration, and a Pathfinding algorithm. There are assumptions that the system takes:
 
 1. The environment at some point has been mapped in the past via GPS or other mapping system.
-2. The environment the system is in is confirmed to be considered a disaster, therefore everyone in the environment needs some level of rescue but some may be injured and require specific assistance.
+2. There may be mulitple victims requiring assistance and multiple SAR first responder teams allowing for all paths start from the homebase.
+3. The environment the system is in is confirmed to be considered a disaster, therefore everyone in the environment needs some level of rescue but some may be injured and require specific assistance.
 
 ### Object Detection Model: YOLOv8
 YOLOv8 is an object detection model that is used to detect people. As it is assumed that people may be in the environment, the model will flag when a person is detected to a 90% confidence that is provided by the results of running the image through the model. This is also used as the VLM is computationally intensive and would slow down the system if it was solely running as the person detection model. If a person is detected in the image, the framework will move the image through the VLM.
