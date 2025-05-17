@@ -4,13 +4,11 @@ import time
 import json
 from cryptography.fernet import Fernet
 import sys
-import struct
-import cv2
 import numpy as np
 import math
-import requests
-import torch
-from PIL import Image
+import matplotlib.pyplot as plt
+import random
+from shapely.geometry import Polygon, Point, LineString
 
 sys.path.append("..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
@@ -41,149 +39,305 @@ server_running = True  # Flag to control the server loop
 #             return True
 #     return False
 
-class Node:
-    def __init__(self, x, y, size, node_type = 0) -> None:
-        self.x = x                      # x coordinate
-        self.y = y                      # y coordinate
-        self.size = size                # size
-        self.node_type = node_type      # open space (0), obstacle (1), start (2), goal (3)
-        self.state = 0
-        self.neighbors = []
-        
-        # A start values
-        self.f = 0
-        self.g = 1
-        self.h = 0
-        pass
+# class Node:
+#     def __init__(self, x, y) -> None:
+#         self.x, self.y = x, y
+#         self.node_type = None
+#         self.parent = None
+#         self.cost = 0
+#         pass
 
-    def __repr__(self) -> str:
-        return f"Node({self.x}, {self.y}, type={self.node_type})"
-        pass
+# class Obstacle:
+#     def __init__(self, vertices) -> None:
+#         self.polygon = Polygon(vertices)
+#         pass
 
-    def draw(self, image, flipped_y):
-        # color = (255, 255, 255) if self.node_type == 0 else (0, 0, 0)
-        color = (0,0,0)
-        if self.node_type == 0:
-            color = (255, 255, 255)
-        elif self.node_type == 2:
-            color = (0, 255, 0)
-        elif self.node_type == 3:
-            color = (0, 0, 255)
-
-
-        top_left = (self.x * self.size, flipped_y * self.size)
-        bottom_right = ((self.x + 1) * self.size, (flipped_y + 1) * self.size)
-        cv2.rectangle(image, top_left, bottom_right, color, -1)  # Fill
-        cv2.rectangle(image, top_left, bottom_right, (200, 200, 200), 1)
-
-class Map:
-    def __init__(self, width, height, cell_size, grid_data):
-        self.width = width
-        self.height = height
-        self.cell_size = cell_size
-        self.nodes = [
-            [Node(x, y, cell_size, grid_data[y][x]) for x in range(width)]
-            for y in range(height)
-        ]
-        self.start_node = None
-        self.goal_node = None
-
-    def setObstacles(self, obstacles):
-        # for row in self.nodes:
-        #     for node in row:
-        #         print(node.x, ',', node.y, ',', node.node_type)
-        for obstacle in obstacles:
-            for row in self.nodes:
-                for node in row:
-                    if node.x == 50 and node.y == 50:
-                        node.node_type = 2
-                        self.start_node = node
-                    elif node.x >= obstacle['lower_x']+50 and node.x <= obstacle['upper_x']+50 and node.y >= obstacle['lower_y']+50 and node.y <= obstacle['upper_y']+50:
-                        node.node_type = 1
-                    # elif node.x == 1 and node.y == 1: # checking to see where the grid begins
-                    #     node.node_type = 1
-
-    def setGoal(self, goal):
-        for row in self.nodes:
-            for node in row:
-                if node.x == goal['x']+50 and node.y == goal['y']+50:
-                    self.goal_node = node
-                    node.node_type = 3
-
-    def setNeighbors(self, allow_diagnols=False):
-        directions = [
-            (0,1),
-            (1,0),
-            (0,-1),
-            (-1,0)
-        ]
-
-        if allow_diagnols:
-            directions.append((1,1), (-1,1), (1,-1), (-1,-1))
-
-        for y in range(self.height):
-            for x in range(self.width):
-                node = self.nodes[y][x]
-                for dx, dy in directions:
-                    neighbor_x, neighbor_y = x+dx, y+dy
-                    if 0 <= neighbor_x < self.width and 0 <= neighbor_y < self.height:
-                        neighbor = self.nodes[neighbor_y][neighbor_x]
-                        if neighbor.node_type != 1:
-                            node.neighbors.append(neighbor)
-        pass
-
-    def getMap(self):
-        width = self.width * self.cell_size
-        height = self.height * self.cell_size
-        img = np.ones((height, width, 3), dtype=np.uint8) * 255
-        
-        
-        for row in self.nodes:
-            for node in row:
-                flipped_y = self.height - 1 - node.y
-                node.draw(img, flipped_y)
-
-        return img
+#     def collides(self, x, y):
+#         return self.polygon.contains(Point(x,y))
     
-class pathfinding:
-    def __init__(self, map_grid) -> None:
-        self.map_grid = map_grid
-        pass
+#     def line_intersects(self, x1, y1, x2, y2):
+#         line = LineString([(x1, y1), (x2, y2)])
+#         return self.polygon.intersects(line)
+    
+#     def draw(self, ax):
+#         x, y = self.polygon.exterior.xy
+#         ax.fill(x, y, color='black', alpha=0.4)
 
-    def setHueristic(self):
-        #print(f'Start node: {self.map_grid.start_node}, End node: {self.map_grid.goal_node}')
-        goal_node = self.map_grid.goal_node
-        for row in self.map_grid.nodes:
-            for node in row:
-                hn = round(math.sqrt((node.x-goal_node.x)**2 +(node.y-goal_node.y)**2), 2)
-                node.h = hn
-        pass
+# class RRTStar:
+#     def __init__(self, start, goal, map_size, obstacles=None,
+#                  step_size=5, goal_sample_rate=0.1,
+#                  search_radius=15, max_iter=500):
+#         self.start = Node(*start)
+#         self.goal = Node(*goal)
+#         self.map_size = map_size
+#         self.obstacles = obstacles or []
+#         self.step_size = step_size
+#         self.goal_sample_rate = goal_sample_rate
+#         self.search_radius = search_radius
+#         self.max_iter = max_iter
+#         self.nodes = [self.start]
 
-    def Astar(self):
-        self.setHueristic()
+#     def distance(self, n1, n2):
+#         return np.hypot(n1.x - n2.x, n1.y - n2.y)
 
-        path_to_goal = []
+#     def sample(self):
+#         if random.random() < self.goal_sample_rate:
+#             return self.goal
+#         return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
 
-        open_list = []
-        closed_list = []
+#     def nearest(self, random_node):
+#         return min(self.nodes, key=lambda node: self.distance(node, random_node))
 
-        open_list.append(self.map_grid.start_node)
+#     def steer(self, from_node, to_node):
+#         dist = self.distance(from_node, to_node)
+#         if dist < self.step_size:
+#             return to_node
+#         theta = np.arctan2(to_node.y - from_node.y, to_node.x - from_node.x)
+#         new_x = from_node.x + self.step_size * np.cos(theta)
+#         new_y = from_node.y + self.step_size * np.sin(theta)
+#         new_node = Node(new_x, new_y)
+#         new_node.parent = from_node
+#         new_node.cost = from_node.cost + self.step_size
+#         return new_node
 
-        while not open_list:
-            q = None
-            q_f = None
-            for node in open_list:
-                if q_f is None or (node.g + node.h) < q_f:
-                    q = node
-                    q_f = node.g + node.h
-            
-            
+#     def is_collision_free(self, node):
+#         for obs in self.obstacles:
+#             if obs.collides(node.x, node.y):
+#                 return False
+#         return 0 <= node.x <= self.map_size[0] and 0 <= node.y <= self.map_size[1]
 
+#     def get_nearby_nodes(self, new_node):
+#         return [node for node in self.nodes if self.distance(node, new_node) <= self.search_radius]
 
-        return path_to_goal
+#     def choose_parent(self, new_node, nearby_nodes):
+#         min_cost = float('inf')
+#         best_node = None
+#         for node in nearby_nodes:
+#             if not self.check_line_collision(node, new_node):
+#                 cost = node.cost + self.distance(node, new_node)
+#                 if cost < min_cost:
+#                     min_cost = cost
+#                     best_node = node
+#         if best_node:
+#             new_node.parent = best_node
+#             new_node.cost = min_cost
 
-    def RTT():
-        pass
+#     def rewire(self, new_node, nearby_nodes):
+#         for node in nearby_nodes:
+#             if not self.check_line_collision(new_node, node):
+#                 new_cost = new_node.cost + self.distance(new_node, node)
+#                 if new_cost < node.cost:
+#                     node.parent = new_node
+#                     node.cost = new_cost
+
+#     def check_line_collision(self, n1, n2):
+#         for obs in self.obstacles:
+#             if obs.line_intersects(n1.x, n1.y, n2.x, n2.y):
+#                 return True
+#         return False
+
+#     def is_goal_reached(self, node):
+#         return self.distance(node, self.goal) < self.step_size and not self.check_line_collision(node, self.goal)
+
+#     def extract_path(self):
+#         path = []
+#         node = self.goal
+#         while node:
+#             path.append((node.x, node.y))
+#             node = node.parent
+#         return path[::-1]  # reverse
+
+#     def plan(self, ax, pause_time=0.01):
+#         for _ in range(self.max_iter):
+#             rnd = self.sample()
+#             nearest_node = self.nearest(rnd)
+#             new_node = self.steer(nearest_node, rnd)
+
+#             if not self.is_collision_free(new_node):
+#                 continue
+
+#             nearby = self.get_nearby_nodes(new_node)
+#             self.choose_parent(new_node, nearby)
+#             self.nodes.append(new_node)
+#             self.rewire(new_node, nearby)
+
+#             if new_node.parent:
+#                 ax.plot([new_node.x, new_node.parent.x], [new_node.y, new_node.parent.y], "-g", linewidth=0.5)
+#                 plt.pause(pause_time)
+
+#             if self.is_goal_reached(new_node):
+#                 if not self.check_line_collision(new_node, self.goal):
+#                     self.goal.parent = new_node
+#                     self.goal.cost = new_node.cost + self.distance(new_node, self.goal)
+#                     self.nodes.append(self.goal)
+
+#                     # Draw final goal connection
+#                     ax.plot([self.goal.x, new_node.x], [self.goal.y, new_node.y], "-g", linewidth=0.5)
+#                     plt.pause(pause_time)
+#                     break
+
+#         return self.extract_path()
+
+#     def draw_final(self, ax, path=None):
+#         if path:
+#             px, py = zip(*path)
+#             ax.plot(px, py, "-r", linewidth=2, label="Final Path")
+
+#         ax.plot(self.start.x, self.start.y, "ob", label="Start")
+#         ax.plot(self.goal.x, self.goal.y, "or", label="Goal")
+#         ax.legend()
+#         ax.set_xlim(0, self.map_size[0])
+#         ax.set_ylim(0, self.map_size[1])
+#         ax.set_aspect('equal')
+#         ax.set_title("Live RRT* with Polygon Obstacles")
+
+class Node:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+        self.parent = None
+        self.cost = 0
+
+class Obstacle:
+    def __init__(self, vertices):
+        self.polygon = Polygon(vertices)
+
+    def collides(self, x, y):
+        return self.polygon.contains(Point(x, y))
+
+    def line_intersects(self, x1, y1, x2, y2):
+        return self.polygon.intersects(LineString([(x1, y1), (x2, y2)]))
+
+    def draw(self, ax):
+        x, y = self.polygon.exterior.xy
+        ax.fill(x, y, color='black', alpha=0.4)
+
+class RRTStar:
+    def __init__(self, start, goal, map_size, obstacles=None,
+                 step_size=5, goal_sample_rate=0.1,
+                 search_radius=15, max_iter=500):
+        self.start = Node(*start)
+        self.goal = Node(*goal)
+        self.map_size = map_size
+        self.obstacles = obstacles or []
+        self.step_size = step_size
+        self.goal_sample_rate = goal_sample_rate
+        self.search_radius = search_radius
+        self.max_iter = max_iter
+        self.nodes = [self.start]
+
+    def distance(self, n1, n2):
+        return np.hypot(n1.x - n2.x, n1.y - n2.y)
+
+    def sample(self):
+        if random.random() < self.goal_sample_rate:
+            return self.goal
+        return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
+
+    def nearest(self, random_node):
+        return min(self.nodes, key=lambda node: self.distance(node, random_node))
+
+    def steer(self, from_node, to_node):
+        dist = self.distance(from_node, to_node)
+        if dist < self.step_size:
+            return to_node
+        theta = np.arctan2(to_node.y - from_node.y, to_node.x - from_node.x)
+        new_x = from_node.x + self.step_size * np.cos(theta)
+        new_y = from_node.y + self.step_size * np.sin(theta)
+        new_node = Node(new_x, new_y)
+        return new_node
+
+    def is_collision_free(self, node):
+        for obs in self.obstacles:
+            if obs.collides(node.x, node.y):
+                return False
+        return 0 <= node.x <= self.map_size[0] and 0 <= node.y <= self.map_size[1]
+
+    def check_line_collision(self, n1, n2):
+        for obs in self.obstacles:
+            if obs.line_intersects(n1.x, n1.y, n2.x, n2.y):
+                return True
+        return False
+
+    def get_nearby_nodes(self, new_node):
+        return [node for node in self.nodes if self.distance(node, new_node) <= self.search_radius]
+
+    def choose_parent(self, new_node, nearby_nodes):
+        min_cost = float('inf')
+        best_node = None
+        for node in nearby_nodes:
+            if not self.check_line_collision(node, new_node):
+                cost = node.cost + self.distance(node, new_node)
+                if cost < min_cost:
+                    min_cost = cost
+                    best_node = node
+        if best_node:
+            new_node.parent = best_node
+            new_node.cost = min_cost
+
+    def rewire(self, new_node, nearby_nodes):
+        for node in nearby_nodes:
+            if not self.check_line_collision(new_node, node):
+                new_cost = new_node.cost + self.distance(new_node, node)
+                if new_cost < node.cost:
+                    node.parent = new_node
+                    node.cost = new_cost
+
+    def is_goal_reached(self, node):
+        return self.distance(node, self.goal) < self.step_size and not self.check_line_collision(node, self.goal)
+
+    def extract_path(self):
+        path = []
+        node = self.goal
+        while node:
+            path.append((node.x, node.y))
+            node = node.parent
+        return path[::-1]
+
+    def plan(self, ax, pause_time=0.01):
+        for _ in range(self.max_iter):
+            rnd = self.sample()
+            nearest_node = self.nearest(rnd)
+            new_node = self.steer(nearest_node, rnd)
+
+            if not self.is_collision_free(new_node):
+                continue
+
+            if self.check_line_collision(nearest_node, new_node):
+                continue  # ensure edge is also collision-free
+
+            nearby = self.get_nearby_nodes(new_node)
+            self.choose_parent(new_node, nearby)
+
+            if new_node.parent and not self.check_line_collision(new_node.parent, new_node):
+                self.nodes.append(new_node)
+                self.rewire(new_node, nearby)
+
+                ax.plot([new_node.x, new_node.parent.x], [new_node.y, new_node.parent.y], "-g", linewidth=0.5)
+                plt.pause(pause_time)
+
+                if self.is_goal_reached(new_node):
+                    self.goal.parent = new_node
+                    self.goal.cost = new_node.cost + self.distance(new_node, self.goal)
+                    self.nodes.append(self.goal)
+                    ax.plot([self.goal.x, new_node.x], [self.goal.y, new_node.y], "-g", linewidth=0.5)
+                    plt.pause(pause_time)
+                    break
+
+        return self.extract_path()
+
+    def draw_final(self, ax, path=None):
+        if path:
+            px, py = zip(*path)
+            ax.plot(px, py, "-r", linewidth=2, label="Final Path")
+
+        ax.plot(self.start.x, self.start.y, "ob", label="Start")
+        ax.plot(self.goal.x, self.goal.y, "or", label="Goal")
+        ax.legend()
+        ax.set_xlim(0, self.map_size[0])
+        ax.set_ylim(0, self.map_size[1])
+        ax.set_aspect('equal')
+        ax.set_title("Safe RRT* Path Planning")
+
 
 def estimate_location(drone_loc_dict):
     x_d = drone_loc_dict['x_d']
@@ -325,19 +479,23 @@ if __name__ == "__main__":
     waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
     print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
 
-    # Create blank map (visual)
-    window_name = "Environment Map"
-
-    grid_data = []
-
-    for i in range(y_dim):
-        grid_data.append([])
-        for j in range(x_dim):
-            grid_data[i].append(0)
-
-    # Create and display the map
-    map_grid = Map(width=x_dim, height=y_dim, cell_size=5, grid_data=grid_data)
-    obstacles = [
+    # Environment 1 Obstacles
+    enivornment = [
+        {
+            'name': 'start'
+            , 'x': 0
+            , 'y': 0
+        },
+        {
+            'name': 'goal_1'
+            , 'x': -15
+            , 'y': 40
+        },
+        {
+            'name': 'goal_2'
+            , 'x': 40
+            , 'y': 40
+        },
         {
             'name': 'obstacle_1'
             , 'lower_x': 28
@@ -367,17 +525,58 @@ if __name__ == "__main__":
             , 'upper_y': 50
         }
     ]
-    map_grid.setObstacles(obstacles)
 
-    goal = {'x': -22, 'y': 40}
-    map_grid.setGoal(goal)
+    start = (0,0)
+    goals = []
+    map_size = (x_dim, y_dim)
+    obstacles = []
 
-    map_grid.setNeighbors()
+    for item in enivornment:
+        if item['name'] == 'start':
+            start = (item['x']+50, item['y']+50)
+        elif 'goal' in item['name']:
+            goals.append((item['x']+50, item['y']+50))
+        elif 'obstacle' in item['name']:
+            obstacles.append(Obstacle([(item['lower_x']+50, item['lower_y']+50)
+                                      , (item['upper_x']+50,item['lower_y']+50)
+                                      , (item['upper_x']+50, item['upper_y']+50)
+                                      , (item['lower_x']+50, item['upper_y']+50)]))
+            
+    paths =[]
+    colors = ['red', 'blue', 'green', 'purple']
+            
+    fig, ax = plt.subplots(figsize=(8,8))
+    ax.set_xlim(0, map_size[0])
+    ax.set_xlim(0, map_size[1])
+    ax.set_aspect('equal')
+    ax.set_title('RRT* for multliple goals')
 
-    path = pathfinding(map_grid=map_grid).Astar()
+    for obs in obstacles:
+        obs.draw(ax)
 
-    # Get inital Grid/Environment/Map State
-    map_img = map_grid.getMap()
+    ax.plot(start[0], start[1], 'ob', label='Start')
+
+    for i, goal in enumerate(goals):
+        print(f'\n Planning path to Goal {i+1}: {goal}')
+
+        rrt_star = RRTStar(start, goal, map_size, obstacles)
+        path = rrt_star.plan(ax, pause_time=0.01)
+        paths.append(path)
+
+        if path:
+            px, py = zip(*path)
+            ax.plot(px, py, color=colors[i%len(colors)], linewidth=2, label=f'Goal {i+1}')
+            ax.plot(goal[0], goal[1], 'o', color=colors[i%len(colors)])
+
+        plt.pause(0.5)
+
+    ax.legend()
+    plt.show()
+
+    # rrt_star = RRTStar(start=start, goal=goal, map_size=map_size, obstacles=obstacles)
+    # path = rrt_star.plan(ax=ax)
+    # rrt_star.draw_final(ax, path)
+    # plt.show()
 
     # Start server
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -388,19 +587,9 @@ if __name__ == "__main__":
     # Start accepting clients in a separate thread
     accept_thread = threading.Thread(target=accept_clients, args=(server_socket, waypoints,), daemon=True)
     accept_thread.start()
+    
+    print("🛑 Shutting down server...")
+    server_running = False  # Signal the accept_clients thread to stop
+    server_socket.close()  # Close the server socket
 
-    # Main loop for server shutdown
-    while True:
-        #command = input("\nEnter 'x' to exit server: ").strip().lower()
-        cv2.imshow(window_name, map_img)
-        print('Server and Environment Map has opened. Press ESC to close')
-        key = cv2.waitKey(0) & 0XFF
-
-        #if command == 'x':
-        if key == 27:
-            print("🛑 Shutting down server...")
-            server_running = False  # Signal the accept_clients thread to stop
-            server_socket.close()  # Close the server socket
-            accept_thread.join()  # Wait for thread to exit
-            cv2.destroyAllWindows()
-            break
+    accept_thread.join()  # Wait for thread to exit
