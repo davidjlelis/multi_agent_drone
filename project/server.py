@@ -9,6 +9,7 @@ import math
 import matplotlib.pyplot as plt
 import random
 from shapely.geometry import Polygon, Point, LineString
+from queue import Queue, Empty
 
 sys.path.append("..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
@@ -38,158 +39,6 @@ server_running = True  # Flag to control the server loop
 #             print("🚨 WARNING: Possible jamming detected! Too many connections in a short time.")
 #             return True
 #     return False
-
-# class Node:
-#     def __init__(self, x, y) -> None:
-#         self.x, self.y = x, y
-#         self.node_type = None
-#         self.parent = None
-#         self.cost = 0
-#         pass
-
-# class Obstacle:
-#     def __init__(self, vertices) -> None:
-#         self.polygon = Polygon(vertices)
-#         pass
-
-#     def collides(self, x, y):
-#         return self.polygon.contains(Point(x,y))
-    
-#     def line_intersects(self, x1, y1, x2, y2):
-#         line = LineString([(x1, y1), (x2, y2)])
-#         return self.polygon.intersects(line)
-    
-#     def draw(self, ax):
-#         x, y = self.polygon.exterior.xy
-#         ax.fill(x, y, color='black', alpha=0.4)
-
-# class RRTStar:
-#     def __init__(self, start, goal, map_size, obstacles=None,
-#                  step_size=5, goal_sample_rate=0.1,
-#                  search_radius=15, max_iter=500):
-#         self.start = Node(*start)
-#         self.goal = Node(*goal)
-#         self.map_size = map_size
-#         self.obstacles = obstacles or []
-#         self.step_size = step_size
-#         self.goal_sample_rate = goal_sample_rate
-#         self.search_radius = search_radius
-#         self.max_iter = max_iter
-#         self.nodes = [self.start]
-
-#     def distance(self, n1, n2):
-#         return np.hypot(n1.x - n2.x, n1.y - n2.y)
-
-#     def sample(self):
-#         if random.random() < self.goal_sample_rate:
-#             return self.goal
-#         return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
-
-#     def nearest(self, random_node):
-#         return min(self.nodes, key=lambda node: self.distance(node, random_node))
-
-#     def steer(self, from_node, to_node):
-#         dist = self.distance(from_node, to_node)
-#         if dist < self.step_size:
-#             return to_node
-#         theta = np.arctan2(to_node.y - from_node.y, to_node.x - from_node.x)
-#         new_x = from_node.x + self.step_size * np.cos(theta)
-#         new_y = from_node.y + self.step_size * np.sin(theta)
-#         new_node = Node(new_x, new_y)
-#         new_node.parent = from_node
-#         new_node.cost = from_node.cost + self.step_size
-#         return new_node
-
-#     def is_collision_free(self, node):
-#         for obs in self.obstacles:
-#             if obs.collides(node.x, node.y):
-#                 return False
-#         return 0 <= node.x <= self.map_size[0] and 0 <= node.y <= self.map_size[1]
-
-#     def get_nearby_nodes(self, new_node):
-#         return [node for node in self.nodes if self.distance(node, new_node) <= self.search_radius]
-
-#     def choose_parent(self, new_node, nearby_nodes):
-#         min_cost = float('inf')
-#         best_node = None
-#         for node in nearby_nodes:
-#             if not self.check_line_collision(node, new_node):
-#                 cost = node.cost + self.distance(node, new_node)
-#                 if cost < min_cost:
-#                     min_cost = cost
-#                     best_node = node
-#         if best_node:
-#             new_node.parent = best_node
-#             new_node.cost = min_cost
-
-#     def rewire(self, new_node, nearby_nodes):
-#         for node in nearby_nodes:
-#             if not self.check_line_collision(new_node, node):
-#                 new_cost = new_node.cost + self.distance(new_node, node)
-#                 if new_cost < node.cost:
-#                     node.parent = new_node
-#                     node.cost = new_cost
-
-#     def check_line_collision(self, n1, n2):
-#         for obs in self.obstacles:
-#             if obs.line_intersects(n1.x, n1.y, n2.x, n2.y):
-#                 return True
-#         return False
-
-#     def is_goal_reached(self, node):
-#         return self.distance(node, self.goal) < self.step_size and not self.check_line_collision(node, self.goal)
-
-#     def extract_path(self):
-#         path = []
-#         node = self.goal
-#         while node:
-#             path.append((node.x, node.y))
-#             node = node.parent
-#         return path[::-1]  # reverse
-
-#     def plan(self, ax, pause_time=0.01):
-#         for _ in range(self.max_iter):
-#             rnd = self.sample()
-#             nearest_node = self.nearest(rnd)
-#             new_node = self.steer(nearest_node, rnd)
-
-#             if not self.is_collision_free(new_node):
-#                 continue
-
-#             nearby = self.get_nearby_nodes(new_node)
-#             self.choose_parent(new_node, nearby)
-#             self.nodes.append(new_node)
-#             self.rewire(new_node, nearby)
-
-#             if new_node.parent:
-#                 ax.plot([new_node.x, new_node.parent.x], [new_node.y, new_node.parent.y], "-g", linewidth=0.5)
-#                 plt.pause(pause_time)
-
-#             if self.is_goal_reached(new_node):
-#                 if not self.check_line_collision(new_node, self.goal):
-#                     self.goal.parent = new_node
-#                     self.goal.cost = new_node.cost + self.distance(new_node, self.goal)
-#                     self.nodes.append(self.goal)
-
-#                     # Draw final goal connection
-#                     ax.plot([self.goal.x, new_node.x], [self.goal.y, new_node.y], "-g", linewidth=0.5)
-#                     plt.pause(pause_time)
-#                     break
-
-#         return self.extract_path()
-
-#     def draw_final(self, ax, path=None):
-#         if path:
-#             px, py = zip(*path)
-#             ax.plot(px, py, "-r", linewidth=2, label="Final Path")
-
-#         ax.plot(self.start.x, self.start.y, "ob", label="Start")
-#         ax.plot(self.goal.x, self.goal.y, "or", label="Goal")
-#         ax.legend()
-#         ax.set_xlim(0, self.map_size[0])
-#         ax.set_ylim(0, self.map_size[1])
-#         ax.set_aspect('equal')
-#         ax.set_title("Live RRT* with Polygon Obstacles")
 
 class Node:
     def __init__(self, x, y):
@@ -406,6 +255,7 @@ def handle_client(conn, addr, waypoints):
             return
 
         # Listen for detections
+        # detection JSON format
         while True:
             data_size_bytes = conn.recv(8)
             if not data_size_bytes:
@@ -421,15 +271,22 @@ def handle_client(conn, addr, waypoints):
 
             if not data:
                 break
+            else:
+                decrypted_data = cipher.decrypt(data)
+                detection = json.loads(decrypted_data.decode('utf-8'))
+                # print(detection)
+                # Assume detection includes drone state
+                x_p, y_p = estimate_location(detection)
+                x = int(x_p)+50
+                y =  int(y_p)+50
 
-            decrypted_data = cipher.decrypt(data)
-            detection = json.loads(decrypted_data.decode('utf-8'))
-            print(detection)
-            # Assume detection includes drone state
-            x_d, y_d = detection['x_d'], detection['y_d']
-            x_p, y_p = estimate_location(detection)
-            #print(f'Person found nearby {x_p},{y_p}. Drone location at {x_d}, {y_d}')
-            #draw_detection_on_map(x=x_p, y=y_p)
+                new_goal = {'name': f'goal_{x},{y}', 'x': x, 'y':y}
+
+                if new_goal in goals:
+                    break
+                else: 
+                    goals.append(new_goal)
+                    goal_queue.put(new_goal)
 
     except (ConnectionResetError, BrokenPipeError) as e:
         print(f"⚠️ Connection lost with {addr}: {e}")
@@ -467,7 +324,16 @@ def generate_waypoints(x_dim, y_dim, step=1):
     
     return waypoints  
 
+def on_key(event):
+    global  server_running
+    if event.key == 'escape':
+        print('Closing Server...')
+        server_running = False
+
 if __name__ == "__main__":
+    # Global Variables
+    global fig, ax, goals, paths, colors, goal_queue
+
     # Get environment dimension
     x_dim = int(input("Enter X dimension of explorable environment (in meters): "))
     y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))
@@ -479,22 +345,13 @@ if __name__ == "__main__":
     waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
     print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
 
-    # Environment 1 Obstacles
-    enivornment = [
+    ### Testing RRT* Algorithm
+    # Environment 1 Obstacles 
+    environment = [
         {
             'name': 'start'
             , 'x': 0
             , 'y': 0
-        },
-        {
-            'name': 'goal_1'
-            , 'x': -15
-            , 'y': 40
-        },
-        {
-            'name': 'goal_2'
-            , 'x': 40
-            , 'y': 40
         },
         {
             'name': 'obstacle_1'
@@ -523,19 +380,25 @@ if __name__ == "__main__":
             , 'upper_x': 13
             , 'lower_y': 40
             , 'upper_y': 50
+        },
+        {
+            'name': 'obstacle_5'
+            , 'lower_x': -13
+            , 'upper_x': 13
+            , 'lower_y': -12
+            , 'upper_y': -28
         }
     ]
 
     start = (0,0)
     goals = []
+    goal_queue = Queue()
     map_size = (x_dim, y_dim)
     obstacles = []
 
-    for item in enivornment:
+    for item in environment:
         if item['name'] == 'start':
             start = (item['x']+50, item['y']+50)
-        elif 'goal' in item['name']:
-            goals.append((item['x']+50, item['y']+50))
         elif 'obstacle' in item['name']:
             obstacles.append(Obstacle([(item['lower_x']+50, item['lower_y']+50)
                                       , (item['upper_x']+50,item['lower_y']+50)
@@ -544,52 +407,67 @@ if __name__ == "__main__":
             
     paths =[]
     colors = ['red', 'blue', 'green', 'purple']
-            
+
     fig, ax = plt.subplots(figsize=(8,8))
-    ax.set_xlim(0, map_size[0])
-    ax.set_xlim(0, map_size[1])
+    ax.set_xlim(0, x_dim)
+    ax.set_ylim(0, y_dim)
     ax.set_aspect('equal')
-    ax.set_title('RRT* for multliple goals')
+    ax.set_title("RRT* Visual - Press ESC to Stop")
+
+    fig.canvas.mpl_connect('key_press_event', on_key)
 
     for obs in obstacles:
         obs.draw(ax)
-
     ax.plot(start[0], start[1], 'ob', label='Start')
-
-    for i, goal in enumerate(goals):
-        print(f'\n Planning path to Goal {i+1}: {goal}')
-
-        rrt_star = RRTStar(start, goal, map_size, obstacles)
-        path = rrt_star.plan(ax, pause_time=0.01)
-        paths.append(path)
-
-        if path:
-            px, py = zip(*path)
-            ax.plot(px, py, color=colors[i%len(colors)], linewidth=2, label=f'Goal {i+1}')
-            ax.plot(goal[0], goal[1], 'o', color=colors[i%len(colors)])
-
-        plt.pause(0.5)
-
-    ax.legend()
+    plt.legend()
+    plt.ion()
     plt.show()
 
-    # rrt_star = RRTStar(start=start, goal=goal, map_size=map_size, obstacles=obstacles)
-    # path = rrt_star.plan(ax=ax)
-    # rrt_star.draw_final(ax, path)
-    # plt.show()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        s.listen()
+        print(f"Server listening on {HOST}:{PORT}")
+        accept_thread = threading.Thread(target=accept_clients, args=(s, waypoints, ), daemon=True)
+        accept_thread.start()
 
-    # Start server
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((HOST, PORT))
-    server_socket.listen()
-    print(f"🚀 Server listening on {HOST}:{PORT}")
+        while server_running:
+            try:
+                goal = goal_queue.get(timeout=0.1)
+                goal_name = goal['name']
+                goal_pos = (goal['x'], goal['y'])
+                print(f'Planning path to {goal_name}: {goal_pos}')
+                ax.plot(goal_pos[0], goal_pos[1], 'or')
 
-    # Start accepting clients in a separate thread
-    accept_thread = threading.Thread(target=accept_clients, args=(server_socket, waypoints,), daemon=True)
-    accept_thread.start()
+                rrt = RRTStar(start, goal_pos, map_size, obstacles)
+                path = rrt.plan(ax, pause_time=0.01)
+
+                if path:
+                    px, py = zip(*path)
+                    ax.plot(px, py, 'r-', linewidth=2)
+                    print(f'Path draw to {goal_name}')
+                else:
+                    print(f'WARNING: No Path to {goal_name}')
+
+                plt.pause(0.1)
+            except Empty:
+                plt.pause(0.01)
+
+
+    # # Start server
+    # server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # server_socket.bind((HOST, PORT))
+    # server_socket.listen()
+    # print(f"🚀 Server listening on {HOST}:{PORT}")
+
+    # # Start accepting clients in a separate thread
+    # accept_thread = threading.Thread(target=accept_clients, args=(server_socket, waypoints, environment, ), daemon=True)
+    # accept_thread.start()
     
-    print("🛑 Shutting down server...")
-    server_running = False  # Signal the accept_clients thread to stop
-    server_socket.close()  # Close the server socket
+    # # print("🛑 Shutting down server...")
+    # server_running = True  # Signal the accept_clients thread to stop
+    # while server_running:
+    #     plt.pause(0.1) 
+    # server_socket.close()  # Close the server socket
+        
 
-    accept_thread.join()  # Wait for thread to exit
+    # accept_thread.join()  # Wait for thread to exit
