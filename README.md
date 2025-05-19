@@ -5,6 +5,10 @@ Created by: David Lelis (N00957151)
 
 Supervised by: Ayan Dutta, PhD
 
+Update as of 2025.05.18: The system currently is able to detect people in an environment to 70% confidence and return back coordinate information so the server computes a path from origin (center of the map / 50,50) to the goal coordinate that is supposed to be the person found. However, a couple of issues have arose:
+1. The system doesn't have a way to determine if a scenario involving a person has already been discovered and skip ahead. This means that one scene with a person is being repeatedly detected until the drone passes them, making for multiple paths to the same person.
+2. Issue 1 has also shown that the RRT* algorith may also be creating new trees each time instead of using the exsisting tree. Need to update to use the existing tree and update paths to goal coordinates using that.
+
 ## Introduction
 Purpose: Create a multi-agent vision-language-action (VLA) drone system that is used to survey an environment for dangerous scenarios or injured individuals.
 
