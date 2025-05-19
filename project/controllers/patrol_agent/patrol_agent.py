@@ -204,18 +204,13 @@ class Mavic(Robot):
     def is_emergency(self, description: str) -> bool:
         prompt = f"""
             You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
-            safe or injured. Given the description below, provide a response.
+            safe or injured. Currently, it is being done in a 3D simualtion so assume renderings are real. 
+            Given the description below, provide a response only if a person is found.
 
             Description: "{description}"
 
-            Respond with "Person Found" if the description contains a person. If the description contains a person, determine 
-            if the person may be injured and what assistance they would need. Format the response in a JSON format:
-
-            {{
-                "person_found": True or False,
-                "requires_assistance": True or False,
-                "assistance_instructions": "instructions"
-            }}
+            Respond with "Person Found" if the description contains a person and if so, determine 
+            if the person may be injured or in danger and what assistance they would need from first responders.
         """
         
         completion = client.chat.completions.create(
@@ -267,6 +262,9 @@ class Mavic(Robot):
         # initiate confidence values
         best_conf = 0.0
 
+        # make a list of coordinates of where people have been detected
+        list_of_detections = []
+
         while self.step(self.time_step) != -1:
             # current_time = self.getTime()
 
@@ -278,7 +276,7 @@ class Mavic(Robot):
             telemetry_data = {
                 "x_d": x_pos, "y_d": y_pos, "altitude": altitude,
                 "roll": roll, "pitch": pitch, "yaw": yaw,
-                "conf": 0.0, "person_found": False, "requires_assistance": False,
+                "conf": 0.0, "person_found": False, "requries_assistance": False,
                 "assistance_instructions": ''
             }
 
@@ -297,9 +295,9 @@ class Mavic(Robot):
                 
                 if int(cls) == 0: # If person is detected to a 90% confidence
                     # print(conf)
-                    if conf > 0.8:
+                    if round(conf, 2) > 0.70:
                         # if the new conf is better than the currently best conf, set best_conf to new conf
-                        if conf > best_conf:
+                        if round(conf, 2) > round(best_conf, 2):
                             best_conf = conf
                         # else, there isn't a better conf and set person_detected is True
                         else:
@@ -309,7 +307,8 @@ class Mavic(Robot):
                             cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
                             telemetry_data['conf'] = best_conf
 
-            if person_detected:
+            if person_detected and (int(x_pos), int(y_pos)) not in list_of_detections:
+                list_of_detections.append((int(x_pos), int(y_pos)))
                 #print("YOLO has detected a person. Running Florence-2 to get image description")
                 prompt = "Describe the image"
                 inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
@@ -321,20 +320,17 @@ class Mavic(Robot):
                 try:
                     # LLM Processing
                     LLM_response = self.is_emergency(generated_text)
-                    #print('LLM Response:', LLM_response)
-                    response = self.extract_json_from_text(LLM_response)
+                    # response = self.extract_json_from_text(LLM_response)
 
                     #insert into client response
-                    telemetry_data['person_found'] = response['person_found']
-                    telemetry_data['requires_assistance'] = response['requires_assistance']
-                    telemetry_data['assistance_instructions'] = response['assistance_instructions']
+                    telemetry_data['person_found'] = True
+                    telemetry_data['requires_assistance'] = True if 'Person Found' in LLM_response else False
+                    telemetry_data['assistance_instructions'] = LLM_response
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
                         print('Max calls for free trier credits.')
                     else:
                         raise
-                
-                #print(response)
 
                 if telemetry_data['person_found']:
                     cv2.putText(bgr_image, f"Person found...", (10, 30),
