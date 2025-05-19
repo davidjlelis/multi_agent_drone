@@ -29,18 +29,13 @@ The VLM being used in the framework is Florence2-base, a lightweight VLM that ca
 The LLM used in the framework is Qwen2.5-72B and is ran online as it is computationally intensive, more so than the VLM. The image description is ran through the model with the given prompt:
 
             You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
-            safe or injured. Given the description below, provide a response.
+            safe or injured. Currently, it is being done in a 3D simualtion so assume renderings are real. 
+            Given the description below, provide a response only if a person is found.
 
             Description: "{description}"
 
-            Respond with "Person Found" if the description contains a person. If the description contains a person, determine 
-            if the person may be injured and what assistance they would need. Format the response in a JSON format:
-
-            {{
-                "person_found": True or False,
-                "requires_assistance": True or False,
-                "assistance_instructions": "instructions"
-            }}
+            Respond with "Person Found" if the description contains a person and if so, determine 
+            if the person may be injured or in danger and what assistance they would need from first responders.
 
 As seen, the model is instructed to return a JSON string in order to easily detect if a person is found, if they may require special assistance, and the instructions to assist the victim. This will be sent to the server along with the coordinates of the scene to pass onto first responders to evacuate the victim as necessary.
 
