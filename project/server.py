@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import random
 from shapely.geometry import Polygon, Point, LineString
 from queue import Queue, Empty
+import os
 
 sys.path.append("..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
@@ -74,13 +75,41 @@ class RRTStar:
         self.max_iter = max_iter
         self.nodes = [self.start]
 
+    # def __init__(self, start, goal=None, map_size=(100, 100), obstacles=None,
+    #              step_size=5, goal_sample_rate=0.1,
+    #              search_radius=15, max_iter=500):
+    #     self.start = Node(*start)
+    #     self.goals = []
+    #     if goal:
+    #         self.goals.append(Node(*goal))
+    #     self.reached_goals = []
+    #     self.map_size = map_size
+    #     self.obstacles = obstacles or []
+    #     self.step_size = step_size
+    #     self.goal_sample_rate = goal_sample_rate
+    #     self.search_radius = search_radius
+    #     self.max_iter = max_iter
+    #     self.nodes = [self.start]
+
     def distance(self, n1, n2):
         return np.hypot(n1.x - n2.x, n1.y - n2.y)
+
+    # def sample(self):
+    #     if random.random() < self.goal_sample_rate:
+    #         return self.goal
+    #     return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
+
+    # def sample(self):
+    #     if random.random() < self.goal_sample_rate:
+    #         return random.choice(self.goals)  # pick a random goal
+    #     return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
 
     def sample(self):
         if random.random() < self.goal_sample_rate:
             return self.goal
-        return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
+        x = random.uniform(-self.map_size[0] / 2, self.map_size[0] / 2)
+        y = random.uniform(-self.map_size[1] / 2, self.map_size[1] / 2)
+        return Node(x, y)
 
     def nearest(self, random_node):
         return min(self.nodes, key=lambda node: self.distance(node, random_node))
@@ -95,11 +124,19 @@ class RRTStar:
         new_node = Node(new_x, new_y)
         return new_node
 
+    # def is_collision_free(self, node):
+    #     for obs in self.obstacles:
+    #         if obs.collides(node.x, node.y):
+    #             return False
+    #     return 0 <= node.x <= self.map_size[0] and 0 <= node.y <= self.map_size[1]
+
     def is_collision_free(self, node):
         for obs in self.obstacles:
             if obs.collides(node.x, node.y):
                 return False
-        return 0 <= node.x <= self.map_size[0] and 0 <= node.y <= self.map_size[1]
+        half_width, half_height = self.map_size[0] / 2, self.map_size[1] / 2
+        return (-half_width <= node.x <= half_width) and (-half_height <= node.y <= half_height)
+
 
     def check_line_collision(self, n1, n2):
         for obs in self.obstacles:
@@ -109,6 +146,9 @@ class RRTStar:
 
     def get_nearby_nodes(self, new_node):
         return [node for node in self.nodes if self.distance(node, new_node) <= self.search_radius]
+
+    def add_goal(self, goal_coord):
+        self.goals.append(Node(*goal_coord))
 
     def choose_parent(self, new_node, nearby_nodes):
         min_cost = float('inf')
@@ -134,9 +174,9 @@ class RRTStar:
     def is_goal_reached(self, node):
         return self.distance(node, self.goal) < self.step_size and not self.check_line_collision(node, self.goal)
 
-    def extract_path(self):
+    def extract_path(self, goal):
         path = []
-        node = self.goal
+        node = goal
         while node:
             path.append((node.x, node.y))
             node = node.parent
@@ -172,7 +212,62 @@ class RRTStar:
                     plt.pause(pause_time)
                     break
 
-        return self.extract_path()
+        return self.extract_path(self.goal)
+
+    # def plan(self, ax=None, pause_time=0.01):
+    #     goal = self.goals[-1]  # most recently added goal
+
+    #     for i in range(self.max_iter):
+    #         rnd = self.sample()
+    #         nearest_node = self.nearest(rnd)
+    #         new_node = self.steer(nearest_node, rnd)
+
+    #         if not self.is_collision_free(new_node):
+    #             continue
+    #         if self.check_line_collision(nearest_node, new_node):
+    #             continue
+
+    #         nearby = self.get_nearby_nodes(new_node)
+    #         self.choose_parent(new_node, nearby)
+
+    #         if new_node.parent and not self.check_line_collision(new_node.parent, new_node):
+    #             self.nodes.append(new_node)
+    #             self.rewire(new_node, nearby)
+
+    #             if ax and i % 10 == 0:
+    #                 ax.plot([new_node.x, new_node.parent.x], [new_node.y, new_node.parent.y], "-g", linewidth=0.5)
+    #                 plt.pause(pause_time)
+
+    #             if self.distance(new_node, goal) < self.step_size and not self.check_line_collision(new_node, goal):
+    #                 goal.parent = new_node
+    #                 goal.cost = new_node.cost + self.distance(new_node, goal)
+    #                 self.nodes.append(goal)
+
+    #                 if ax:
+    #                     ax.plot([goal.x, new_node.x], [goal.y, new_node.y], "-g", linewidth=0.5)
+    #                     path = self.extract_path(goal)
+    #                     px, py = zip(*path)
+    #                     ax.plot(px, py, "-r", linewidth=2, label=f"Path to ({int(goal.x)}, {int(goal.y)})")
+    #                     ax.plot(goal.x, goal.y, "or")
+    #                     ax.legend()
+    #                     ax.set_title(f"Planned to goal ({int(goal.x)}, {int(goal.y)})")
+    #                     plt.pause(pause_time)
+    #                 break
+
+    #     return self.extract_path(goal)
+
+    # def draw_final(self, ax, path=None):
+    #     if path:
+    #         px, py = zip(*path)
+    #         ax.plot(px, py, "-r", linewidth=2, label="Final Path")
+
+    #     ax.plot(self.start.x, self.start.y, "ob", label="Start")
+    #     ax.plot(self.goal.x, self.goal.y, "or", label="Goal")
+    #     ax.legend()
+    #     ax.set_xlim(0, self.map_size[0])
+    #     ax.set_ylim(0, self.map_size[1])
+    #     ax.set_aspect('equal')
+    #     ax.set_title("Safe RRT* Path Planning")
 
     def draw_final(self, ax, path=None):
         if path:
@@ -182,34 +277,32 @@ class RRTStar:
         ax.plot(self.start.x, self.start.y, "ob", label="Start")
         ax.plot(self.goal.x, self.goal.y, "or", label="Goal")
         ax.legend()
-        ax.set_xlim(0, self.map_size[0])
-        ax.set_ylim(0, self.map_size[1])
+        
+        # FIXED axis limits for centered map
+        half_width, half_height = self.map_size[0] / 2, self.map_size[1] / 2
+        ax.set_xlim(-half_width, half_width)
+        ax.set_ylim(-half_height, half_height)
+
         ax.set_aspect('equal')
         ax.set_title("Safe RRT* Path Planning")
 
 
-def estimate_location(drone_loc_dict):
-    x_d = drone_loc_dict['x_d']
-    y_d = drone_loc_dict['y_d']
-    altitude = drone_loc_dict['altitude']
-    roll = drone_loc_dict['roll']
-    pitch = drone_loc_dict['pitch']
-    yaw = drone_loc_dict['yaw']
 
-    #Convert_angles to radians
-    yaw_rad = math.radians(yaw)
-    pitch_rad = math.radians(pitch)
+# def estimate_location(drone_loc_dict):
+#     x_d, y_d = drone_loc_dict['x_d'], drone_loc_dict['y_d']
+#     altitude, pitch, yaw = drone_loc_dict['altitude'], drone_loc_dict['pitch'], drone_loc_dict['yaw']
 
-    if pitch >= 90:
-        return round(x_d, 5), round(y_d, 5)
-    
-    d = altitude * math.tan(pitch_rad)
+#     yaw_rad = math.radians(yaw)
+#     pitch_rad = math.radians(pitch)
 
-    x_p = x_d + d * math.cos(yaw_rad)
-    y_p = y_d + d * math.cos(yaw_rad)
+#     if pitch >= 90:
+#         return round(x_d, 5), round(y_d, 5)
 
-    return round(x_p, 5), round(y_p, 5)
-    pass
+#     d = altitude * math.tan(pitch_rad)
+#     x_p = x_d + d * math.cos(yaw_rad)
+#     y_p = y_d + d * math.sin(yaw_rad)
+
+#     return round(x_p, 5), round(y_p, 5)
 
 def handle_client(conn, addr, waypoints):
     """Handles communication with a connected client."""
@@ -254,6 +347,11 @@ def handle_client(conn, addr, waypoints):
             print(f"⚠️ Timeout waiting for client ready signal from {addr}. Closing connection.")
             return
 
+        # Create json file
+        output_path = "detections.json"
+        with open(output_path, "w") as f:
+            json.dump([], f)
+
         # Listen for detections
         # detection JSON format
         while True:
@@ -276,11 +374,24 @@ def handle_client(conn, addr, waypoints):
                 detection = json.loads(decrypted_data.decode('utf-8'))
                 # print(detection)
                 # Assume detection includes drone state
-                x_p, y_p = estimate_location(detection)
-                x = int(x_p)+50
-                y =  int(y_p)+50
+                # x_p, y_p = estimate_location(detection)
+                print('Person found! Saving Coordinates and message.')            
 
+                with open(output_path, "r") as f:
+                    data = json.load(f)
+
+                data.append(detection)
+
+                with open(output_path, "w") as f:
+                    json.dump(data, f, indent=4)
+
+                x = detection['x_d']
+                y = detection['y_d']
+
+                # new_goal = {'name': f'goal_{detection['x_d']},{detection['y_d']}', 'x': detection['x_d'], 'y':detection['y_d']}
                 new_goal = {'name': f'goal_{x},{y}', 'x': x, 'y':y}
+
+
 
                 if new_goal in goals:
                     break
@@ -311,17 +422,59 @@ def accept_clients(server_socket, waypoints):
         except OSError:
             break  # Server socket closed
 
-def generate_waypoints(x_dim, y_dim, step=1):
-    waypoints = []
-    x_start = int(-x_dim/2)
-    x_end = int(x_dim/2)
-    y_start = int(-y_dim/2)
-    y_end = int(y_dim/2)
+# def generate_waypoints(x_dim, y_dim, step_x, step_y):
+#     waypoints = []
+#     x_start = int(-x_dim/2)
+#     x_end = int(x_dim/2)
+#     y_start = int(-y_dim/2)
+#     y_end = int(y_dim/2)
 
-    for x in range(x_start, x_end+1, step):
-        for y in range(y_start, y_end+1, step):
-            waypoints.append({'x': x, 'y' : y})
+#     for x in range(int(x_start), int(x_end)+1, int(step_x)):
+#         for y in range(int(y_start), int(y_end)+1, int(step_y)):
+#             waypoints.append({'x': x, 'y' : y})
     
+#     return waypoints  
+
+def generate_waypoints(x_dim, y_dim, step_x=32.36, step_y=25):
+    waypoints = []
+    x_min = -x_dim / 2
+    y_min = -y_dim / 2
+
+    x_max = x_dim / 2
+    y_max = y_dim / 2
+
+    # print(x_min, x_max, y_min, y_max)
+
+    num_rows = int((y_max-y_min) // step_y) + 1
+    num_cols = int((x_max-x_min) // step_x) + 1
+
+    for row in range(num_rows):
+        y = y_min + row * step_y
+        x_coords = [x_min + col * step_x for col in range(num_cols)]
+
+        if row % 2 == 1:
+            x_coords.reverse()
+
+        for x in x_coords:
+            print(x, y)
+            if x <= x_dim and y <= y_dim:
+                waypoints.append({'x': round(x, 2), 'y' : round(y, 2)})
+            else:
+                waypoints.append({'x': x_max, 'y': round(y,2)})
+    
+    for col in range(num_cols):
+        x = x_min + col * step_x
+        y_coords = [y_min + row * step_y for row in range(num_rows)]
+
+        if col % 2 == 1:
+            y_coords.reverse()
+        
+        for y in y_coords:
+            if x <= x_dim and y <= y_dim:
+                waypoints.append({'x': round(x, 2), 'y' : round(y, 2)})
+            else:
+                waypoints.append({'x': round(x, 2), 'y': y_max})
+
     return waypoints  
 
 def on_key(event):
@@ -337,13 +490,33 @@ if __name__ == "__main__":
     # Get environment dimension
     x_dim = int(input("Enter X dimension of explorable environment (in meters): "))
     y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))
-    step = int(input("Enter step size (in meters) (default 1): "))
 
-    x_path = x_dim-20
-    y_path = y_dim-20
+    step_x = 20
+    step_y = 20
 
-    waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
-    print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
+    # waypoints = generate_waypoints(x_dim=x_dim-10, y_dim=y_dim-10, step_x=step_x, step_y=step_y )
+    waypoints = [ {'x': -40, 'y': -40},
+                    {'x': 40, 'y': -40},
+                    {'x': 40, 'y': -20},
+                    {'x': -40, 'y': -20},
+                    {'x': -40, 'y': 0},
+                    {'x': 40, 'y': 0},
+                    {'x': 40, 'y': 20},
+                    {'x': -40, 'y': 20},
+                    {'x': -40, 'y': 40},
+                    {'x': 40, 'y': 40},
+
+                    {'x': 40, 'y': -40},
+                    {'x': 20, 'y': -40},
+                    {'x': 20, 'y': 40},
+                    {'x': 0, 'y': 40},
+                    {'x': 0, 'y': -40},
+                    {'x': 20, 'y': -40},
+                    {'x': 20, 'y': 40},
+                    {'x': 40, 'y': 40},
+                    {'x': 40, 'y': -40}
+    ]
+    print(f"Waypoints created {x_dim} m x {y_dim} m \n {waypoints}")
 
     ### Testing RRT* Algorithm
     # Environment 1 Obstacles 
@@ -398,19 +571,19 @@ if __name__ == "__main__":
 
     for item in environment:
         if item['name'] == 'start':
-            start = (item['x']+50, item['y']+50)
+            start = (item['x'], item['y'])
         elif 'obstacle' in item['name']:
-            obstacles.append(Obstacle([(item['lower_x']+50, item['lower_y']+50)
-                                      , (item['upper_x']+50,item['lower_y']+50)
-                                      , (item['upper_x']+50, item['upper_y']+50)
-                                      , (item['lower_x']+50, item['upper_y']+50)]))
+            obstacles.append(Obstacle([(item['lower_x'], item['lower_y'])
+                                      , (item['upper_x'],item['lower_y'])
+                                      , (item['upper_x'], item['upper_y'])
+                                      , (item['lower_x'], item['upper_y'])]))
             
     paths =[]
     colors = ['red', 'blue', 'green', 'purple']
 
     fig, ax = plt.subplots(figsize=(8,8))
-    ax.set_xlim(0, x_dim)
-    ax.set_ylim(0, y_dim)
+    ax.set_xlim(-x_dim/2, x_dim/2)
+    ax.set_ylim(-y_dim/2, y_dim/2)
     ax.set_aspect('equal')
     ax.set_title("RRT* Visual - Press ESC to Stop")
 
@@ -433,6 +606,8 @@ if __name__ == "__main__":
         while server_running:
             try:
                 goal = goal_queue.get(timeout=0.1)
+
+                print(goal)
                 goal_name = goal['name']
                 goal_pos = (goal['x'], goal['y'])
                 print(f'Planning path to {goal_name}: {goal_pos}')
@@ -440,6 +615,7 @@ if __name__ == "__main__":
 
                 rrt = RRTStar(start, goal_pos, map_size, obstacles)
                 path = rrt.plan(ax, pause_time=0.01)
+                # rrt.add_goal(goal_pos)
 
                 if path:
                     px, py = zip(*path)
@@ -452,6 +628,7 @@ if __name__ == "__main__":
             except Empty:
                 plt.pause(0.01)
 
+    
 
     # # Start server
     # server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

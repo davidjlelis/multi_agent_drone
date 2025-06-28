@@ -1,0 +1,28 @@
+[
+    {
+        "x_d": -40,
+        "y_d": -40,
+        "altitude": 19.998907345833285,
+        "roll": 0.001253144555653413,
+        "pitch": 0.015110413621561623,
+        "yaw": -0.43560517869667253,
+        "conf": 0.7240994572639465,
+        "person_found": true,
+        "requires_assistance": true,
+        "assistance_instructions": "Person Found. The person appears to be walking across a green field, which suggests they are mobile and not immediately in danger or injured based on the given description. However, the context of a disaster area means that further assessment is necessary to ensure their safety. First responders should:\n\n- Approach the person to conduct a visual check for any injuries or signs of distress.\n- Ask the person if they are okay and if they have any immediate needs such as medical attention, water, or food.\n- Check if the person has information about others who may be in need of assistance.\n- Ensure the person is aware of the safest route to a designated safe zone or shelter.",
+        "detection_id": 1
+    },
+    {
+        "x_d": 3,
+        "y_d": 0,
+        "altitude": 19.992892713836184,
+        "roll": 0.0012735641863302924,
+        "pitch": 0.03685156765108676,
+        "yaw": -0.01513066919064071,
+        "conf": 0.8001617789268494,
+        "person_found": true,
+        "requires_assistance": true,
+        "assistance_instructions": "No person is mentioned in the description provided. The description only mentions a 3D rendering of a house on a green background. Therefore, no response indicating \"Person Found\" is necessary. If you have more details or another scenario where a person is present, please let me know!",
+        "detection_id": 2
+    }
+]

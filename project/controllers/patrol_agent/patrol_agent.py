@@ -25,6 +25,7 @@ from cryptography.fernet import Fernet
 sys.path.append("../..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
 import re
+import math
 
 cipher = Fernet(encryption_key)
 
@@ -101,10 +102,10 @@ class Mavic(Robot):
             motor.setPosition(float('inf'))
             motor.setVelocity(1)
 
-        self.current_pose = [0] * 6
+        self.current_pose = 6 * [0]
         self.target_position = [0, 0, 0]
         self.target_index = 0
-        self.target_altitude = 10
+        self.target_altitude = 20
 
         # Connect to server to get waypoints
         self.server_ip = 'localhost'
@@ -137,7 +138,7 @@ class Mavic(Robot):
 
             self.client_socket.sendall(b'READY')
             waypoints = json.loads(data.decode('utf-8'))
-            print("[Waypoint Client] Received and parsed waypoints successfully.")
+            print(f"[Waypoint Client] Received and parsed waypoints successfully. {waypoints}")
             return waypoints
 
         except Exception as e:
@@ -147,59 +148,106 @@ class Mavic(Robot):
 
     def set_position(self, pos):
         self.current_pose = [float(p) for p in pos]  # Ensure all positions are floats
-        
-    def move_to_target(self):
-        # Ensure target_position and current_pose are floats
-        target_position_floats = [float(x) for x in self.target_position]
-        current_pose_floats = [float(x) for x in self.current_pose[0:2]]
 
-        # defaults to the edge of the environment
-        if target_position_floats[0:2] == [0, 0]:
-            self.target_position[0:2] = [self.waypoints[0]['y'], self.waypoints[0]['x'], 0]
+    def move_to_target(self, verbose_movement=False, verbose_target=False):
+        if self.target_position[0:2] == [0, 0]:  # Initialization
+            self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0]
+            if verbose_target:
+                print("First target: ", self.target_position[0:2])
 
-        # Compare positions to check if the drone has reached the target
-        if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(target_position_floats, current_pose_floats)]):
-            self.target_index = (self.target_index + 1) % len(self.waypoints)
-            self.target_position[0:2] = [self.waypoints[self.target_index]['y'], self.waypoints[self.target_index]['x'], 0]
-        # Ensure float conversion during calculations
+        # if the robot is at the position with a precision of target_precision
+        if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
+
+            self.target_index += 1
+            if self.target_index > len(self.waypoints) - 1:
+                self.target_index = 0
+            self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
+            if verbose_target:
+                print("Target reached! New target: ",
+                      self.target_position[0:2])
+
+        # This will be in ]-pi;pi]
         self.target_position[2] = np.arctan2(
-            float(self.target_position[1]) - float(self.current_pose[1]),
-            float(self.target_position[0]) - float(self.current_pose[0])
-        )
-
-        angle_left = self.target_position[2] - float(self.current_pose[5])
+            self.target_position[1] - self.current_pose[1], self.target_position[0] - self.current_pose[0])
+        # This is now in ]-2pi;2pi[
+        angle_left = self.target_position[2] - self.current_pose[5]
+        # Normalize turn angle to ]-pi;pi]
         angle_left = (angle_left + 2 * np.pi) % (2 * np.pi)
-        if angle_left > np.pi:
+        if (angle_left > np.pi):
             angle_left -= 2 * np.pi
 
-        #yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
-        yaw_disturbance = clamp(self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi), -self.MAX_YAW_DISTURBANCE, self.MAX_YAW_DISTURBANCE)
-        pitch_disturbance = clamp(np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
+        # Turn the robot to the left or to the right according the value and the sign of angle_left
+        yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
+        # non proportional and decreasing function
+        pitch_disturbance = clamp(
+            np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
 
-        # Check if the drone is sufficiently close to the target, then reduce disturbance
-        if abs(angle_left) < 0.05:  # Small angle difference threshold to stop rotating
-            yaw_disturbance = 0
-            pitch_disturbance = 0      
-
+        if verbose_movement:
+            distance_left = np.sqrt(((self.target_position[0] - self.current_pose[0]) ** 2) + (
+                (self.target_position[1] - self.current_pose[1]) ** 2))
+            print("remaning angle: {:.4f}, remaning distance: {:.4f}".format(
+                angle_left, distance_left))
         return yaw_disturbance, pitch_disturbance
 
+    # def move_to_target(self):
+    #     # Ensure target_position and current_pose are floats
+    #     target_position_floats = [float(x) for x in self.target_position]
+    #     current_pose_floats = [float(x) for x in self.current_pose[0:2]]
+
+    #     # defaults to the edge of the environment
+    #     # if target_position_floats[0:2] == [0, 0]:
+    #     #     print(f'Setting inital waypoint {self.waypoints[0]}')
+    #     #     self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0] 
+
+    #     if self.target_position[0:2] == [0, 0]:
+    #         print(f'Setting inital waypoint {self.waypoints[0]}')
+    #         self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0]
+
+    #     # Compare positions to check if the drone has reached the target
+    #     if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, current_pose_floats[0:2])]):
+    #         self.target_index = (self.target_index + 1) % len(self.waypoints)
+    #         self.target_position = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
+    #         print(f'Moving towards {self.target_position}')
+
+    #     # Ensure float conversion during calculations
+    #     # self.target_position[2] = np.arctan2(
+    #     #     float(self.target_position[1]) - float(self.current_pose[1]),
+    #     #     float(self.target_position[0]) - float(self.current_pose[0])
+    #     # )
+
+    #     angle_left = self.target_position[2] - float(self.current_pose[5])
+    #     angle_left = (angle_left + 2 * np.pi) % (2 * np.pi)
+    #     if angle_left > np.pi:
+    #         angle_left -= 2 * np.pi
+
+    #     #yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
+    #     yaw_disturbance = clamp(self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi), -self.MAX_YAW_DISTURBANCE, self.MAX_YAW_DISTURBANCE)
+    #     pitch_disturbance = clamp(np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
+
+    #     # Check if the drone is sufficiently close to the target, then reduce disturbance
+    #     if abs(angle_left) < 0.05:  # Small angle difference threshold to stop rotating
+    #         yaw_disturbance = 0
+    #         pitch_disturbance = 0      
+
+    #     return yaw_disturbance, pitch_disturbance
 
 
-    def estimate_person_location(self, drone_loc):
-        x_d, y_d = drone_loc['x_d'], drone_loc['y_d']
-        altitude, pitch, yaw = drone_loc['altitude'], drone_loc['pitch'], drone_loc['yaw']
 
-        yaw_rad = math.radians(yaw)
-        pitch_rad = math.radians(pitch)
+    # def estimate_person_location(self, drone_loc):
+    #     x_d, y_d = drone_loc['x_d'], drone_loc['y_d']
+    #     altitude, pitch, yaw = drone_loc['altitude'], drone_loc['pitch'], drone_loc['yaw']
 
-        if pitch >= 90:
-            return round(x_d, 5), round(y_d, 5)
+    #     yaw_rad = math.radians(yaw)
+    #     pitch_rad = math.radians(pitch)
 
-        d = altitude * math.tan(pitch_rad)
-        x_p = x_d + d * math.cos(yaw_rad)
-        y_p = y_d + d * math.sin(yaw_rad)
+    #     if pitch >= 90:
+    #         return round(x_d, 5), round(y_d, 5)
 
-        return round(x_p, 5), round(y_p, 5)
+    #     d = altitude * math.tan(pitch_rad)
+    #     x_p = x_d + d * math.cos(yaw_rad)
+    #     y_p = y_d + d * math.sin(yaw_rad)
+
+    #     return round(x_p, 5), round(y_p, 5)
 
     def is_emergency(self, description: str) -> bool:
         prompt = f"""
@@ -209,7 +257,7 @@ class Mavic(Robot):
 
             Description: "{description}"
 
-            Respond with "Person Found" if the description contains a person and if so, determine 
+            Respond with "Person Found" only if the description contains a person and if so, determine 
             if the person may be injured or in danger and what assistance they would need from first responders.
         """
         
@@ -247,6 +295,61 @@ class Mavic(Robot):
             print("Error:", e)
         return {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
 
+    def far_from_other_detections(self, new_detection, detections):
+        if len(detections) == 0:
+            return True
+
+        for detection in detections:
+            distance = math.sqrt((detection[0]-new_detection[0])**2+(detection[1]-new_detection[1])**2)
+            if distance < 5:
+                return False
+            
+        return True
+
+    def estimate_person_distiance(self
+        , person_height_real = 1.7            # meters (average height of person)
+        , bounding_box_height_px = None     # height of the person in the image in pixels
+        , image_height_px = None            # height of image
+        , focal_length_mm = 10.26           # focal length of Mavic Pro 2 camera
+        , sensor_height_mm = 8.8            # sensor height of Mavic Pro 2 camera
+        , drone_altitude_m = 20             # height of drone altitude
+                                 ):
+        # Ground Sampling Distance
+        gsd = (sensor_height_mm * drone_altitude_m) / (focal_length_mm *image_height_px)
+
+        # Apparent person height in meters
+        apparent_height_m = bounding_box_height_px * gsd
+
+        # Estimate horizontal ground distance from nadir (under drone) to person
+        ground_distance = (person_height_real * focal_length_mm) / (bounding_box_height_px * sensor_height_mm) * drone_altitude_m
+
+        # Slant (3D) distance from drone to person
+        slant_distance = math.sqrt(ground_distance**2 + drone_altitude_m**2)
+
+        return {
+            "GSD": gsd,
+            "Apparent height": apparent_height_m,
+            "Ground distance": ground_distance,
+            "Slant distance": slant_distance
+        }
+    
+    def get_estimated_coordinates(self, bounding_box_height_px, image_height_px, x_d, y_d):
+        x_p = None
+        y_p = None
+
+        # x_d = x_d
+        # y_d = y_d
+        theta = math.radians(30)
+
+        print(f'Estimating person coordinates: {x_d}, {y_d}')
+
+        estimate_distance = self.estimate_person_distiance(bounding_box_height_px=bounding_box_height_px, image_height_px=image_height_px)
+
+        x_p = x_d + estimate_distance['GSD'] * math.cos(theta)
+        y_p = y_d + estimate_distance['GSD'] * math.sin(theta)
+
+        return x_p, y_p
+
     def run(self):
         print(f'Starting up {self.getName()}')
         t1 = self.getTime()
@@ -263,7 +366,11 @@ class Mavic(Robot):
         best_conf = 0.0
 
         # make a list of coordinates of where people have been detected
-        list_of_detections = []
+        detections = []
+        detection_id = 0
+        detections_folder = '../detections'
+        if not os.path.exists(detections_folder):
+            os.makedirs(detections_folder)
 
         while self.step(self.time_step) != -1:
             # current_time = self.getTime()
@@ -274,10 +381,10 @@ class Mavic(Robot):
             self.set_position([x_pos, y_pos, altitude, roll, pitch, yaw])
 
             telemetry_data = {
-                "x_d": x_pos, "y_d": y_pos, "altitude": altitude,
+                "x_d": int(x_pos), "y_d": int(y_pos), "altitude": altitude,
                 "roll": roll, "pitch": pitch, "yaw": yaw,
-                "conf": 0.0, "person_found": False, "requries_assistance": False,
-                "assistance_instructions": ''
+                "conf": 0.0, "person_found": False, "requires_assistance": False,
+                "assistance_instructions": '', "detection_id": False
             }
 
             raw_image = self.camera.getImage()
@@ -285,6 +392,7 @@ class Mavic(Robot):
             bgr_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR) # YOLO
             rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
             pil_image = Image.fromarray(rgb_image)
+        
 
             # Run YOLOv8 to find people
             results = yolo_model(bgr_image, verbose=False)[0]
@@ -292,7 +400,8 @@ class Mavic(Robot):
 
             for result in results.boxes.data:
                 x1, y1, x2, y2, conf, cls = result.tolist()
-                
+                bounding_box_height = y2-y1
+
                 if int(cls) == 0: # If person is detected to a 90% confidence
                     # print(conf)
                     if round(conf, 2) > 0.70:
@@ -307,16 +416,24 @@ class Mavic(Robot):
                             cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
                             telemetry_data['conf'] = best_conf
 
-            if person_detected and (int(x_pos), int(y_pos)) not in list_of_detections:
-                list_of_detections.append((int(x_pos), int(y_pos)))
+            if person_detected and (int(x_pos), int(y_pos)) not in detections and self.far_from_other_detections(new_detection=(int(x_pos), int(y_pos)), detections=detections):
+                print(f'Person Detected. {int(x_pos)},{int(y_pos)}')
+                detections.append((int(x_pos), int(y_pos)))
+
+                detection_id += 1
+
                 #print("YOLO has detected a person. Running Florence-2 to get image description")
                 prompt = "Describe the image"
                 inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
                 output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
                 generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
-                cv2.imwrite("yolo_detection.jpg", bgr_image)
+
+                yolo_detection = f'{detection_id}_yolo_detection.jpg'
+                yolo_detection_path = os.path.join(detections_folder, yolo_detection)
+
+                cv2.imwrite(yolo_detection_path, bgr_image)
                 #print("Person confirmed. Florence-2 Output:", generated_text)
-                response = {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
+                # response = {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
                 try:
                     # LLM Processing
                     LLM_response = self.is_emergency(generated_text)
@@ -326,6 +443,7 @@ class Mavic(Robot):
                     telemetry_data['person_found'] = True
                     telemetry_data['requires_assistance'] = True if 'Person Found' in LLM_response else False
                     telemetry_data['assistance_instructions'] = LLM_response
+                    telemetry_data['detection_id'] = detection_id
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
                         print('Max calls for free trier credits.')
@@ -335,7 +453,21 @@ class Mavic(Robot):
                 if telemetry_data['person_found']:
                     cv2.putText(bgr_image, f"Person found...", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
-                    cv2.imwrite("vlm_detection.jpg", bgr_image)
+
+                    vlm_detection = f'{detection_id}_vlm_detection.jpg'
+                    vlm_detection_path = os.path.join(detections_folder, vlm_detection)
+
+                    cv2.imwrite(vlm_detection_path, bgr_image)
+
+
+                    # get estimated cooridnate location
+                    # x_p, y_p = self.get_estimated_coordinates(bounding_box_height_px=bounding_box_height
+                    #                                         , image_height_px=pil_image.height
+                    #                                         , x_d=x_pos
+                    #                                         , y_d=y_pos)
+
+                    # telemetry_data['x_d'] = x_p
+                    # telemetry_data['y_d'] = y_p
 
                     # Encrypt and send telemetry data for mapping
                     telemetry_json = json.dumps(telemetry_data)
