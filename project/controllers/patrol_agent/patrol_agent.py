@@ -368,7 +368,7 @@ class Mavic(Robot):
         # make a list of coordinates of where people have been detected
         detections = []
         detection_id = 0
-        detections_folder = '../detections'
+        detections_folder = '../../detections'
         if not os.path.exists(detections_folder):
             os.makedirs(detections_folder)
 
