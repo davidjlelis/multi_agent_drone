@@ -1,18 +1,5 @@
 [
     {
-        "x_d": 0,
-        "y_d": 0,
-        "altitude": 4.112448733397288,
-        "roll": 0.001312032376899971,
-        "pitch": 0.0036412292896171672,
-        "yaw": -2.747535261665698,
-        "conf": 0.5763086676597595,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 1
-    },
-    {
         "x_d": -13,
         "y_d": -8,
         "altitude": 20.34843539608446,
@@ -20,9 +7,9 @@
         "pitch": 0.03657935795283087,
         "yaw": -2.178869897469089,
         "conf": 0.7390052676200867,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
+        "person_found": true,
+        "requires_assistance": true,
+        "assistance_instructions": "1. Person Found\n\n2. Person Requires Assistance\n\n3. Assistance Needed: Immediate assessment and stabilization by medical professionals. The man is flying through the air, which suggests he might have been thrown by a force such as an explosion or a vehicle collision. This could result in serious injuries, including fractures, head trauma, or internal injuries. First responders should prepare for potential rescue from height and provide emergency medical care upon reaching him.",
         "detection_id": 2
     },
     {
@@ -33,9 +20,9 @@
         "pitch": 0.016825620368570833,
         "yaw": -0.3439099892539902,
         "conf": 0.7905473113059998,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
+        "person_found": true,
+        "requires_assistance": false,
+        "assistance_instructions": "1. Person Found  \n2. Person does not require assistance  \n\nThe 3D rendering describes a person walking across a green field, which indicates that the individual is mobile and in an open, presumably safe environment. There is no mention of any injuries or immediate dangers, such as collapsed structures or hazardous materials, that would suggest the person needs immediate assistance. Therefore, based on the given description, the person appears to be safe and does not require assistance at this moment.",
         "detection_id": 3
     },
     {
@@ -46,23 +33,10 @@
         "pitch": 0.0368513453091912,
         "yaw": 0.0024389599211566276,
         "conf": 0.7568271160125732,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
+        "person_found": true,
+        "requires_assistance": false,
+        "assistance_instructions": "1. Person Found  \n2. Person does not require assistance  \n\nThe 3D rendering describes a scene where there is a person walking on a street. There is no indication of injury or immediate danger to the person based on the provided description. Therefore, the person does not require any immediate assistance from first responders. However, it's always good to keep monitoring the situation to ensure their safety, especially in a disaster-affected area.",
         "detection_id": 4
-    },
-    {
-        "x_d": 38,
-        "y_d": -16,
-        "altitude": 19.99895636321903,
-        "roll": 0.0012436681544007275,
-        "pitch": 0.009962007325158366,
-        "yaw": 2.55304952965184,
-        "conf": 0.6766723394393921,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 5
     },
     {
         "x_d": 18,
@@ -72,36 +46,10 @@
         "pitch": 0.03685287760242218,
         "yaw": -3.053288512997566,
         "conf": 0.8643028736114502,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
+        "person_found": true,
+        "requires_assistance": false,
+        "assistance_instructions": "1. Person Found  \n2. Person does not require assistance  \n\nThe description indicates that there is a man standing on top of a building in a 3D simulation of a disaster area. While his location might seem precarious, the description does not suggest that he is injured or in immediate danger. Therefore, it is assumed that he does not require immediate assistance. However, first responders should still monitor the situation as environmental conditions can change rapidly in disaster areas, potentially putting him at risk.",
         "detection_id": 6
-    },
-    {
-        "x_d": -42,
-        "y_d": 39,
-        "altitude": 19.999208997273005,
-        "roll": 0.001314411932609242,
-        "pitch": 0.01918602567423579,
-        "yaw": -0.32229886230483784,
-        "conf": 0.6447587609291077,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 7
-    },
-    {
-        "x_d": -3,
-        "y_d": 39,
-        "altitude": 19.99319580927931,
-        "roll": 0.0012764492109311825,
-        "pitch": 0.03685122276733412,
-        "yaw": -0.017060715470347237,
-        "conf": 0.6145211458206177,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 8
     },
     {
         "x_d": 43,
@@ -111,9 +59,9 @@
         "pitch": 0.026443532253150468,
         "yaw": -1.8300291269334261,
         "conf": 0.5786606669425964,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
+        "person_found": true,
+        "requires_assistance": false,
+        "assistance_instructions": "1. Person Found\n\n2. Person does not require assistance\n\nExplanation: The description states that there is a 3D rendering of a man standing in front of a building. Since he is described as standing and there is no mention of any injury, distress, or immediate danger, it is assumed that the person is safe and does not require assistance.",
         "detection_id": 9
     },
     {
@@ -124,61 +72,9 @@
         "pitch": 0.03749359635244511,
         "yaw": 2.953246693945675,
         "conf": 0.6254761219024658,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
+        "person_found": true,
+        "requires_assistance": false,
+        "assistance_instructions": "1. Person Found\n\n2. Person does not require assistance\n\nThe scene described is of a man riding a bike on a street. There's no indication that he is injured or in immediate danger based on the given description. Therefore, he does not require any form of assistance at this moment.",
         "detection_id": 10
-    },
-    {
-        "x_d": 19,
-        "y_d": -13,
-        "altitude": 19.99344572712943,
-        "roll": 0.0012715648322344018,
-        "pitch": 0.03685122276667404,
-        "yaw": 1.50799470965276,
-        "conf": 0.8373259902000427,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 11
-    },
-    {
-        "x_d": 20,
-        "y_d": 7,
-        "altitude": 19.993046812833878,
-        "roll": 0.001275634708400641,
-        "pitch": 0.03685141116956615,
-        "yaw": 1.5872580002730032,
-        "conf": 0.6473325490951538,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 12
-    },
-    {
-        "x_d": -4,
-        "y_d": 24,
-        "altitude": 19.995316412631478,
-        "roll": 0.0012686348316285597,
-        "pitch": 0.03325409987176262,
-        "yaw": -1.3809831609288017,
-        "conf": 0.7403383851051331,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 13
-    },
-    {
-        "x_d": 5,
-        "y_d": -45,
-        "altitude": 19.99577093719611,
-        "roll": 0.0013045708680687728,
-        "pitch": 0.030429086235831865,
-        "yaw": 0.4981333627151399,
-        "conf": 0.7499749660491943,
-        "person_found": "N/A",
-        "requires_assistance": "N/A",
-        "assistance_instructions": "Max calls for free trier credits.",
-        "detection_id": 14
     }
 ]

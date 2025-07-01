@@ -153,6 +153,7 @@ class Mavic(Robot):
         self.current_pose = [float(p) for p in pos]  # Ensure all positions are floats
 
     def move_to_target(self, verbose_movement=False, verbose_target=False):
+        global end_of_search
         if self.target_position[0:2] == [0, 0]:  # Initialization
             self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0]
             if verbose_target:
@@ -166,7 +167,8 @@ class Mavic(Robot):
                 self.target_position[0:2] = [0,0]
                 end_of_search = True
                 # self.target_index = 0
-            self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
+            else:
+                self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
             if verbose_target:
                 print("Target reached! New target: ",
                       self.target_position[0:2])
@@ -374,7 +376,7 @@ class Mavic(Robot):
         # make a list of coordinates of where people have been detected
         detections = []
         detection_id = 0
-        detections_folder = '../../detections'
+        detections_folder = '../../results/detections'
         if not os.path.exists(detections_folder):
             os.makedirs(detections_folder)
 

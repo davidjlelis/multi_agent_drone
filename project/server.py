@@ -294,8 +294,8 @@ def handle_client(conn, addr, waypoints):
                 # print(detection)
                 # Assume detection includes drone state
                 x_p, y_p = estimate_location(detection)
-                x = int(x_p)+50
-                y =  int(y_p)+50
+                x = int(x_p)
+                y =  int(y_p)
 
                 new_goal = {'name': f'goal_{x},{y}', 'x': x, 'y':y}
 
@@ -438,19 +438,19 @@ if __name__ == "__main__":
 
     for item in environment:
         if item['name'] == 'start':
-            start = (item['x']+50, item['y']+50)
+            start = (item['x'], item['y'])
         elif 'obstacle' in item['name']:
-            obstacles.append(Obstacle([(item['lower_x']+50, item['lower_y']+50)
-                                      , (item['upper_x']+50,item['lower_y']+50)
-                                      , (item['upper_x']+50, item['upper_y']+50)
-                                      , (item['lower_x']+50, item['upper_y']+50)]))
+            obstacles.append(Obstacle([(item['lower_x'], item['lower_y'])
+                                      , (item['upper_x'],item['lower_y'])
+                                      , (item['upper_x'], item['upper_y'])
+                                      , (item['lower_x'], item['upper_y'])]))
             
     paths =[]
     colors = ['red', 'blue', 'green', 'purple']
 
     fig, ax = plt.subplots(figsize=(8,8))
-    ax.set_xlim(0, x_dim)
-    ax.set_ylim(0, y_dim)
+    ax.set_xlim(-x_dim/2, x_dim/2)
+    ax.set_ylim(-x_dim/2, y_dim/2)
     ax.set_aspect('equal')
     ax.set_title("RRT* Visual - Press ESC to Stop")
 
