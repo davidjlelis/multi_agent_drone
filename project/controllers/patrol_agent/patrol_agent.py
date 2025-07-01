@@ -60,6 +60,9 @@ except KeyError:
 
 client = InferenceClient(provider="nebius", api_key=hf_api)
 
+# end of search
+end_of_search = False
+
 def clamp(value, value_min, value_max):
     return min(max(value, value_min), value_max)
 
@@ -160,7 +163,9 @@ class Mavic(Robot):
 
             self.target_index += 1
             if self.target_index > len(self.waypoints) - 1:
-                self.target_index = 0
+                self.target_position[0:2] = [0,0]
+                end_of_search = True
+                # self.target_index = 0
             self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
             if verbose_target:
                 print("Target reached! New target: ",
@@ -257,8 +262,9 @@ class Mavic(Robot):
 
             Description: "{description}"
 
-            Respond with "Person Found" only if the description contains a person and if so, determine 
-            if the person may be injured or in danger and what assistance they would need from first responders.
+            Explain the scene. Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Assistance"
+            if and only if the person may be injured or in danger. If they are not injured, state "2. Person does not require assistance". If the
+            person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
         """
         
         completion = client.chat.completions.create(
@@ -301,7 +307,7 @@ class Mavic(Robot):
 
         for detection in detections:
             distance = math.sqrt((detection[0]-new_detection[0])**2+(detection[1]-new_detection[1])**2)
-            if distance < 5:
+            if distance < 15:
                 return False
             
         return True
@@ -404,7 +410,7 @@ class Mavic(Robot):
 
                 if int(cls) == 0: # If person is detected to a 90% confidence
                     # print(conf)
-                    if round(conf, 2) > 0.70:
+                    if round(conf, 2) > 0.50:
                         # if the new conf is better than the currently best conf, set best_conf to new conf
                         if round(conf, 2) > round(best_conf, 2):
                             best_conf = conf
@@ -440,13 +446,19 @@ class Mavic(Robot):
                     # response = self.extract_json_from_text(LLM_response)
 
                     #insert into client response
-                    telemetry_data['person_found'] = True
-                    telemetry_data['requires_assistance'] = True if 'Person Found' in LLM_response else False
+                    telemetry_data['person_found'] = True if '1. Person Found' in LLM_response else False
+                    telemetry_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
                     telemetry_data['assistance_instructions'] = LLM_response
                     telemetry_data['detection_id'] = detection_id
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
                         print('Max calls for free trier credits.')
+
+                        LLM_response = 'Max calls for free trier credits.'
+                        telemetry_data['person_found'] = 'N/A'
+                        telemetry_data['requires_assistance'] = 'N/A'
+                        telemetry_data['assistance_instructions'] = LLM_response
+                        telemetry_data['detection_id'] = detection_id
                     else:
                         raise
 
@@ -454,10 +466,10 @@ class Mavic(Robot):
                     cv2.putText(bgr_image, f"Person found...", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
 
-                    vlm_detection = f'{detection_id}_vlm_detection.jpg'
-                    vlm_detection_path = os.path.join(detections_folder, vlm_detection)
+                    # vlm_detection = f'{detection_id}_vlm_detection.jpg'
+                    # vlm_detection_path = os.path.join(detections_folder, vlm_detection)
 
-                    cv2.imwrite(vlm_detection_path, bgr_image)
+                    # cv2.imwrite(vlm_detection_path, bgr_image)
 
 
                     # get estimated cooridnate location
@@ -481,6 +493,15 @@ class Mavic(Robot):
 
                 best_conf = 0.0
 
+            if end_of_search and x_pos < 0.5 and x_pos > -0.5 and y_pos < 0.5 and y_pos > -0.5:
+                self.target_altitude = 0
+                
+            if end_of_search and altitude < 0.25:
+                self.front_left_motor.setVelocity(0)
+                self.front_right_motor.setVelocity(0)
+                self.rear_left_motor.setVelocity(0)
+                self.rear_right_motor.setVelocity(0)
+                break
 
             if altitude > self.target_altitude - 1:
                 if self.getTime() - t1 > 0.1:

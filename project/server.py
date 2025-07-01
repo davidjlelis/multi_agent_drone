@@ -354,7 +354,7 @@ if __name__ == "__main__":
     # Get environment dimension
     x_dim = int(input("Enter X dimension of explorable environment (in meters): "))
     y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))
-    step = int(input("Enter step size (in meters) (default 1): "))
+    step = 25
 
     x_path = x_dim-20
     y_path = y_dim-20
