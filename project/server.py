@@ -68,6 +68,7 @@ class RRTStar:
         self.start = Node(*start)
         self.goal = Node(*goal)
         self.map_size = map_size
+        self.map_bounds = (-map_size[0]/2, -map_size[1]/2, map_size[0]/2, map_size[1]/2)
         self.obstacles = obstacles or []
         self.step_size = step_size
         self.goal_sample_rate = goal_sample_rate
@@ -78,10 +79,17 @@ class RRTStar:
     def distance(self, n1, n2):
         return np.hypot(n1.x - n2.x, n1.y - n2.y)
 
+    # def sample(self):
+    #     if random.random() < self.goal_sample_rate:
+    #         return self.goal
+    #     return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
+
     def sample(self):
         if random.random() < self.goal_sample_rate:
             return self.goal
-        return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
+        min_x, min_y, max_x, max_y = self.map_bounds
+        return Node(random.uniform(min_x, max_x), random.uniform(min_y, max_y))
+
 
     def nearest(self, random_node):
         return min(self.nodes, key=lambda node: self.distance(node, random_node))
@@ -97,10 +105,14 @@ class RRTStar:
         return new_node
 
     def is_collision_free(self, node):
+        min_x, min_y, max_x, max_y = self.map_bounds
+        if not (min_x <= node.x <= max_x and min_y <= node.y <= max_y):
+            return False
         for obs in self.obstacles:
             if obs.collides(node.x, node.y):
                 return False
-        return 0 <= node.x <= self.map_size[0] and 0 <= node.y <= self.map_size[1]
+        return True
+
 
     def check_line_collision(self, n1, n2):
         for obs in self.obstacles:
@@ -183,8 +195,9 @@ class RRTStar:
         ax.plot(self.start.x, self.start.y, "ob", label="Start")
         ax.plot(self.goal.x, self.goal.y, "or", label="Goal")
         ax.legend()
-        ax.set_xlim(0, self.map_size[0])
-        ax.set_ylim(0, self.map_size[1])
+        min_x, min_y, max_x, max_y = self.map_bounds
+        ax.set_xlim(min_x, max_x)
+        ax.set_ylim(min_y, max_y)
         ax.set_aspect('equal')
         ax.set_title("Safe RRT* Path Planning")
 

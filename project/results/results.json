@@ -9,72 +9,7 @@
         "conf": 0.7390052676200867,
         "person_found": true,
         "requires_assistance": true,
-        "assistance_instructions": "1. Person Found\n\n2. Person Requires Assistance\n\n3. Assistance Needed: Immediate assessment and stabilization by medical professionals. The man is flying through the air, which suggests he might have been thrown by a force such as an explosion or a vehicle collision. This could result in serious injuries, including fractures, head trauma, or internal injuries. First responders should prepare for potential rescue from height and provide emergency medical care upon reaching him.",
+        "assistance_instructions": "1. Person Found\n\n2. Person Requires Assistance\n\n3. Assistance needed: Immediate aerial rescue to safely bring the man down from his current position as he is flying through the air over a road, which poses a significant risk of injury upon landing. Medical evaluation should also be prepared upon arrival to assess any potential injuries from the flight or the cause of his being airborne, such as an explosion or strong wind from a natural disaster.",
         "detection_id": 2
-    },
-    {
-        "x_d": -43,
-        "y_d": -43,
-        "altitude": 20.008641033348162,
-        "roll": 0.0013079145957622259,
-        "pitch": 0.016825620368570833,
-        "yaw": -0.3439099892539902,
-        "conf": 0.7905473113059998,
-        "person_found": true,
-        "requires_assistance": false,
-        "assistance_instructions": "1. Person Found  \n2. Person does not require assistance  \n\nThe 3D rendering describes a person walking across a green field, which indicates that the individual is mobile and in an open, presumably safe environment. There is no mention of any injuries or immediate dangers, such as collapsed structures or hazardous materials, that would suggest the person needs immediate assistance. Therefore, based on the given description, the person appears to be safe and does not require assistance at this moment.",
-        "detection_id": 3
-    },
-    {
-        "x_d": -10,
-        "y_d": -41,
-        "altitude": 19.992026210032446,
-        "roll": 0.0012760521137454627,
-        "pitch": 0.0368513453091912,
-        "yaw": 0.0024389599211566276,
-        "conf": 0.7568271160125732,
-        "person_found": true,
-        "requires_assistance": false,
-        "assistance_instructions": "1. Person Found  \n2. Person does not require assistance  \n\nThe 3D rendering describes a scene where there is a person walking on a street. There is no indication of injury or immediate danger to the person based on the provided description. Therefore, the person does not require any immediate assistance from first responders. However, it's always good to keep monitoring the situation to ensure their safety, especially in a disaster-affected area.",
-        "detection_id": 4
-    },
-    {
-        "x_d": 18,
-        "y_d": 23,
-        "altitude": 19.99167315335491,
-        "roll": 0.0012627072020069488,
-        "pitch": 0.03685287760242218,
-        "yaw": -3.053288512997566,
-        "conf": 0.8643028736114502,
-        "person_found": true,
-        "requires_assistance": false,
-        "assistance_instructions": "1. Person Found  \n2. Person does not require assistance  \n\nThe description indicates that there is a man standing on top of a building in a 3D simulation of a disaster area. While his location might seem precarious, the description does not suggest that he is injured or in immediate danger. Therefore, it is assumed that he does not require immediate assistance. However, first responders should still monitor the situation as environmental conditions can change rapidly in disaster areas, potentially putting him at risk.",
-        "detection_id": 6
-    },
-    {
-        "x_d": 43,
-        "y_d": 28,
-        "altitude": 19.995995474839688,
-        "roll": 0.0012719985073649691,
-        "pitch": 0.026443532253150468,
-        "yaw": -1.8300291269334261,
-        "conf": 0.5786606669425964,
-        "person_found": true,
-        "requires_assistance": false,
-        "assistance_instructions": "1. Person Found\n\n2. Person does not require assistance\n\nExplanation: The description states that there is a 3D rendering of a man standing in front of a building. Since he is described as standing and there is no mention of any injury, distress, or immediate danger, it is assumed that the person is safe and does not require assistance.",
-        "detection_id": 9
-    },
-    {
-        "x_d": 37,
-        "y_d": -44,
-        "altitude": 19.994751759806707,
-        "roll": 0.001185117794622907,
-        "pitch": 0.03749359635244511,
-        "yaw": 2.953246693945675,
-        "conf": 0.6254761219024658,
-        "person_found": true,
-        "requires_assistance": false,
-        "assistance_instructions": "1. Person Found\n\n2. Person does not require assistance\n\nThe scene described is of a man riding a bike on a street. There's no indication that he is injured or in immediate danger based on the given description. Therefore, he does not require any form of assistance at this moment.",
-        "detection_id": 10
     }
 ]
