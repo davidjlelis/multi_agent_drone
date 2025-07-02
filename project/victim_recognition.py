@@ -8,7 +8,7 @@
 
 # Video footage taken from DroneStock
 
-import numpy
+import numpy as np
 import cv2
 from PIL import Image
 import torch
@@ -80,10 +80,11 @@ json_results_path = '../videos/results/JSON/'
 
 
 
-results_data = {"conf": 0.0, "person_found": False, "requires_assistance": False,
+results_data = {"conf": 0.0, "vlm_description": False ,"person_found": False, "requires_assistance": False,
                 "assistance_instructions": '', "detection_id": False, "video": False}
 for video_file_name in os.listdir(video_path):
     if video_file_name.endswith('.mp4'):
+        print(f'Processing {video_file_name}')
         file_path = os.path.join(video_path, video_file_name)
 
         cap = cv2.VideoCapture(file_path)
@@ -101,6 +102,13 @@ for video_file_name in os.listdir(video_path):
             if not ret:
                 break
 
+            height, width, channels = frame.shape
+
+            img_array = np.frombuffer(frame, dtype=np.uint8).reshape((height, width, channels))
+            bgr_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR) # YOLO
+            rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
+            pil_image = Image.fromarray(rgb_image)
+
             # print(f'Processing frame {frame_number}')
             results = yolo_model(frame, verbose=False)[0]
             person_detected = False
@@ -111,12 +119,13 @@ for video_file_name in os.listdir(video_path):
                 x1, y1, x2, y2, conf, cls = result.tolist()
 
                 if int(cls) == 0:
-                    if round(conf, 2) > 0.70:
+                    if round(conf, 2) > 0.40:
                         if round(conf, 2)> round(_conf, 2):
                             _conf = conf
                         else:
                             person_detected = True
                             results_data['conf'] = _conf
+                            best_conf = 0
 
             if person_detected:
                 try:
@@ -124,37 +133,48 @@ for video_file_name in os.listdir(video_path):
                     prompt = "Describe the image"
                     inputs = VLM_processor(images=frame, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
                     output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
-                    generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
+                    vlm_description = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
 
                 # Pass descrption through LLM to get rescue guidance
-                    LLM_response = is_emergency(generated_text)
+                    LLM_response = is_emergency(vlm_description)
                     #insert into client response
-                    results_data['person_found'] = True
-                    results_data['requires_assistance'] = True if 'Person Found' in LLM_response else False
+                    results_data['vlm_description'] = vlm_description
+                    results_data['person_found'] = True if '1. Person Found' in LLM_response else False
+                    results_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
                     results_data['assistance_instructions'] = LLM_response
                     results_data['detection_id'] = f'{video_file_name}_{frame_number}'
                     results_data['video'] = video_file_name
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
-                        print('Max calls for free trier credits.')
-                        continue
+                        # print('Max calls for free trier credits.')
+                        LLM_response = 'Max calls for free trier credits.'
+                        results_data['vlm_description'] = vlm_description
+                        results_data['person_found'] = 'N/A'
+                        results_data['requires_assistance'] = 'N/A'
+                        results_data['assistance_instructions'] = LLM_response
+                        results_data['detection_id'] = f'{video_file_name}_{frame_number}'
+                        results_data['video'] = video_file_name
+                        # continue
                     else:
                         raise
 
-                if results_data['person_found']:
+                if results_data['person_found'] or results_data['assistance_instructions'] == 'Max calls for free trier credits.':
+                    json_output_path = f'{json_results_path}{json_file_name}'
+                    img_output_path = f'{img_results_path}{video_file_name.replace(".mp4", "")}_results_{frame_number}.jpg'
+
                     cv2.putText(annotated_frame, f"Person found...", (10, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
                     
                     # cv2.imwrite(f'{yolo_results_path}{video_file_name}_results_{frame_number}.jpg', annotated_frame)
-                    cv2.imwrite(f'{img_results_path}{video_file_name}_results_{frame_number}.jpg', annotated_frame) 
+                    cv2.imwrite(img_output_path, annotated_frame) 
                     results_json = json.dumps(results_data)
 
-                    with open(f'{json_results_path}{json_file_name}', "r") as f:
+                    with open(json_output_path, "r") as f:
                         data = json.load(f)
 
                     data.append(results_json)
 
-                    with open(f'{json_results_path}{json_file_name}', "w") as f:
+                    with open(json_output_path, "w") as f:
                         json.dump(data, f, indent=4)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):

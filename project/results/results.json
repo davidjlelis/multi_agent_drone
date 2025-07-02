@@ -1,15 +1,1 @@
-[
-    {
-        "x_d": -13,
-        "y_d": -8,
-        "altitude": 20.34843539608446,
-        "roll": 0.0012666772387805302,
-        "pitch": 0.03657935795283087,
-        "yaw": -2.178869897469089,
-        "conf": 0.7390052676200867,
-        "person_found": true,
-        "requires_assistance": true,
-        "assistance_instructions": "1. Person Found\n\n2. Person Requires Assistance\n\n3. Assistance needed: Immediate aerial rescue to safely bring the man down from his current position as he is flying through the air over a road, which poses a significant risk of injury upon landing. Medical evaluation should also be prepared upon arrival to assess any potential injuries from the flight or the cause of his being airborne, such as an explosion or strong wind from a natural disaster.",
-        "detection_id": 2
-    }
-]
+[]

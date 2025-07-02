@@ -304,11 +304,11 @@ def handle_client(conn, addr, waypoints):
                 with open(results_json_filepath, "w") as f:
                     json.dump(data, f, indent=4)
 
-                # print(detection)
+                print(detection)
                 # Assume detection includes drone state
-                x_p, y_p = estimate_location(detection)
-                x = int(x_p)
-                y =  int(y_p)
+                # x_p, y_p = estimate_location(detection)
+                x = detection['x_d']
+                y =  detection['y_d']
 
                 new_goal = {'name': f'goal_{x},{y}', 'x': x, 'y':y}
 
@@ -365,8 +365,12 @@ if __name__ == "__main__":
     global fig, ax, goals, paths, colors, goal_queue
 
     # Get environment dimension
-    x_dim = int(input("Enter X dimension of explorable environment (in meters): "))
-    y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))
+    # x_dim = int(input("Enter X dimension of explorable environment (in meters): "))
+    # y_dim = int(input("Enter Y dimension of explorable environment (in meters): "))
+    # step = 25
+
+    x_dim = 100
+    y_dim = 100
     step = 25
 
     x_path = x_dim-20
@@ -375,26 +379,37 @@ if __name__ == "__main__":
     # waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
     print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
 
-    waypoints = [ {'x': -40, 'y': -40},
-                    {'x': 40, 'y': -40},
-                    {'x': 40, 'y': -20},
-                    {'x': -40, 'y': -20},
-                    {'x': -40, 'y': 0},
-                    {'x': 40, 'y': 0},
-                    {'x': 40, 'y': 20},
-                    {'x': -40, 'y': 20},
-                    {'x': -40, 'y': 40},
-                    {'x': 40, 'y': 40},
 
-                    {'x': 40, 'y': -40},
-                    {'x': 20, 'y': -40},
-                    {'x': 20, 'y': 40},
-                    {'x': 0, 'y': 40},
-                    {'x': 0, 'y': -40},
-                    {'x': 20, 'y': -40},
-                    {'x': 20, 'y': 40},
-                    {'x': 40, 'y': 40},
-                    {'x': 40, 'y': -40}
+    # manually make waypoints
+    waypoints = [ {'x': -40, 'y': -40},         #   Start
+                    {'x': 40, 'y': -40},        #   Right
+                    {'x': -40, 'y': -40},        #   Left
+                    {'x': -40, 'y': -20},       #   Up
+                    {'x': 40, 'y': -20},        #   Right
+                    {'x': -40, 'y': -20},       #   Left
+                    {'x': -40, 'y': 0},         #   Up
+                    {'x': 40, 'y': 0},          #   Right
+                    {'x': -40, 'y': 0},         #   Left
+                    {'x': -40, 'y': 20},        #   Up
+                    {'x': 40, 'y': 20},         #   Right
+                    {'x': -40, 'y': 20},        #   Left
+                    {'x': -40, 'y': 40},        #   Up
+                    {'x': 40, 'y': 40},         #   Right
+
+                    {'x': 40, 'y': -40},        #   Down
+                    {'x': 40, 'y': 40},         #   Up
+                    {'x': 20, 'y': 40},         #   Left
+                    {'x': 20, 'y': -40},        #   Down
+                    {'x': 20, 'y': 40},         #   Up
+                    {'x': 0, 'y': 40},          #   Left
+                    {'x': 0, 'y': -40},         #   Down
+                    {'x': 0, 'y': 40},          #   Up
+                    {'x': -20, 'y': 40},        #   Left
+                    {'x': -20, 'y': -40},       #   Down
+                    {'x': -20, 'y': 40},        #   Up
+                    {'x': -40, 'y': 40},        #   Left
+                    {'x': -40, 'y': -40},       #   Down
+                    {'x': -40, 'y': 40}         #   Up
     ]
     print(f"Waypoints created {x_dim} m x {y_dim} m \n {waypoints}")
 

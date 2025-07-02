@@ -391,12 +391,17 @@ class Mavic(Robot):
             telemetry_data = {
                 "x_d": int(x_pos), "y_d": int(y_pos), "altitude": altitude,
                 "roll": roll, "pitch": pitch, "yaw": yaw,
-                "conf": 0.0, "person_found": False, "requires_assistance": False,
-                "assistance_instructions": '', "detection_id": False
+                "conf": 0.0, "person_found": False, "vlm_description": False,
+                "requires_assistance": False, "assistance_instructions": '', "detection_id": False
             }
 
+            height = self.camera.getHeight()
+            width = self.camera.getWidth()
+
+            # print(f'Height: {height}, Width: {width}')
+
             raw_image = self.camera.getImage()
-            img_array = np.frombuffer(raw_image, dtype=np.uint8).reshape((self.camera.getHeight(), self.camera.getWidth(), 4))
+            img_array = np.frombuffer(raw_image, dtype=np.uint8).reshape((height, width, 4))
             bgr_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR) # YOLO
             rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
             pil_image = Image.fromarray(rgb_image)
@@ -411,8 +416,10 @@ class Mavic(Robot):
                 bounding_box_height = y2-y1
 
                 if int(cls) == 0: # If person is detected to a 90% confidence
+                    if altitude < self.target_altitude:
+                        continue
                     # print(conf)
-                    if round(conf, 2) > 0.50:
+                    elif round(conf, 2) > 0.40:
                         # if the new conf is better than the currently best conf, set best_conf to new conf
                         if round(conf, 2) > round(best_conf, 2):
                             best_conf = conf
@@ -423,18 +430,15 @@ class Mavic(Robot):
                             cv2.rectangle(bgr_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                             cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
                             telemetry_data['conf'] = best_conf
+                            best_conf = 0
 
             if person_detected and (int(x_pos), int(y_pos)) not in detections and self.far_from_other_detections(new_detection=(int(x_pos), int(y_pos)), detections=detections):
-                print(f'Person Detected. {int(x_pos)},{int(y_pos)}')
-                detections.append((int(x_pos), int(y_pos)))
-
-                detection_id += 1
-
+                # print(f'Person Detected. {int(x_pos)},{int(y_pos)}')
                 #print("YOLO has detected a person. Running Florence-2 to get image description")
                 prompt = "Describe the image"
                 inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
                 output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
-                generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
+                vlm_description = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
 
                 yolo_detection = f'{detection_id}_yolo_detection.jpg'
                 yolo_detection_path = os.path.join(detections_folder, yolo_detection)
@@ -444,19 +448,28 @@ class Mavic(Robot):
                 # response = {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
                 try:
                     # LLM Processing
-                    LLM_response = self.is_emergency(generated_text)
+                    LLM_response = self.is_emergency(vlm_description)
                     # response = self.extract_json_from_text(LLM_response)
-
                     #insert into client response
+                    telemetry_data['vlm_description'] = vlm_description
                     telemetry_data['person_found'] = True if '1. Person Found' in LLM_response else False
                     telemetry_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
                     telemetry_data['assistance_instructions'] = LLM_response
-                    telemetry_data['detection_id'] = detection_id
+
+                    if telemetry_data['person_found'] == True:
+                        detections.append((int(x_pos), int(y_pos)))
+                        detection_id += 1
+
+                    telemetry_data['detection_id'] = 'test_1_'+str(detection_id)
+
+                    
+
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
                         print('Max calls for free trier credits.')
 
                         LLM_response = 'Max calls for free trier credits.'
+                        telemetry_data['vlm_description'] = vlm_description
                         telemetry_data['person_found'] = 'N/A'
                         telemetry_data['requires_assistance'] = 'N/A'
                         telemetry_data['assistance_instructions'] = LLM_response
