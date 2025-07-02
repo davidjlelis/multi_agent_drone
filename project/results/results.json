@@ -1,1 +1,30 @@
-[]
+[
+    {
+        "x_d": -4,
+        "y_d": 0,
+        "altitude": 20.140275313811163,
+        "roll": 0.0013115682449169612,
+        "pitch": 0.03707137482732962,
+        "yaw": -2.3062400673693357,
+        "conf": 0.4741685092449188,
+        "person_found": "N/A",
+        "vlm_description": "A man in a suit is jumping in the air.",
+        "requires_assistance": "N/A",
+        "assistance_instructions": "Max calls for free trier credits.",
+        "detection_id": 0
+    },
+    {
+        "x_d": -4,
+        "y_d": 0,
+        "altitude": 20.205801334224322,
+        "roll": 0.0013087066087331613,
+        "pitch": 0.03695447515496888,
+        "yaw": -2.3018278599746,
+        "conf": 0.4650035500526428,
+        "person_found": "N/A",
+        "vlm_description": "A man in a black suit is jumping in the air.",
+        "requires_assistance": "N/A",
+        "assistance_instructions": "Max calls for free trier credits.",
+        "detection_id": 0
+    }
+]
