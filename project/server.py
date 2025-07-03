@@ -201,30 +201,6 @@ class RRTStar:
         ax.set_aspect('equal')
         ax.set_title("Safe RRT* Path Planning")
 
-
-def estimate_location(drone_loc_dict):
-    x_d = drone_loc_dict['x_d']
-    y_d = drone_loc_dict['y_d']
-    altitude = drone_loc_dict['altitude']
-    roll = drone_loc_dict['roll']
-    pitch = drone_loc_dict['pitch']
-    yaw = drone_loc_dict['yaw']
-
-    #Convert_angles to radians
-    yaw_rad = math.radians(yaw)
-    pitch_rad = math.radians(pitch)
-
-    if pitch >= 90:
-        return round(x_d, 5), round(y_d, 5)
-    
-    d = altitude * math.tan(pitch_rad)
-
-    x_p = x_d + d * math.cos(yaw_rad)
-    y_p = y_d + d * math.cos(yaw_rad)
-
-    return round(x_p, 5), round(y_p, 5)
-    pass
-
 def handle_client(conn, addr, waypoints):
     """Handles communication with a connected client."""
     global connection_timestamps
@@ -307,8 +283,8 @@ def handle_client(conn, addr, waypoints):
                 print(detection)
                 # Assume detection includes drone state
                 # x_p, y_p = estimate_location(detection)
-                x = detection['x_d']
-                y =  detection['y_d']
+                x = detection['est_x']
+                y =  detection['est_y']
 
                 new_goal = {'name': f'goal_{x},{y}', 'x': x, 'y':y}
 

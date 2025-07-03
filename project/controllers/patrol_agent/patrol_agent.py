@@ -86,7 +86,10 @@ class Mavic(Robot):
         #self.client = self.setup_client_connection(name=self.name)
 
         self.camera = self.getDevice("camera")
+        self.camera.setFov(0.7854)
         self.camera.enable(self.time_step)
+        self.camera_pitch_sensor = self.getDevice("camera pitch sensor")
+        self.camera_pitch_sensor.enable(self.time_step)
         self.imu = self.getDevice("inertial unit")
         self.imu.enable(self.time_step)
         self.gps = self.getDevice("gps")
@@ -99,7 +102,12 @@ class Mavic(Robot):
         self.rear_left_motor = self.getDevice("rear left propeller")
         self.rear_right_motor = self.getDevice("rear right propeller")
         self.camera_pitch_motor = self.getDevice("camera pitch")
-        self.camera_pitch_motor.setPosition(0.7)
+        self.camera_pitch_motor.setPosition(0.7)        
+        self.camera_yaw_motor = self.getDevice("camera yaw")
+        self.camera_yaw_motor.setPosition(0.0)
+        self.camera_roll_motor = self.getDevice("camera roll")
+        self.camera_roll_motor.setPosition(0.0)    # level
+
 
         for motor in [self.front_left_motor, self.front_right_motor, self.rear_left_motor, self.rear_right_motor]:
             motor.setPosition(float('inf'))
@@ -313,50 +321,85 @@ class Mavic(Robot):
                 return False
             
         return True
-
-    def estimate_person_distiance(self
-        , person_height_real = 1.7            # meters (average height of person)
-        , bounding_box_height_px = None     # height of the person in the image in pixels
-        , image_height_px = None            # height of image
-        , focal_length_mm = 10.26           # focal length of Mavic Pro 2 camera
-        , sensor_height_mm = 8.8            # sensor height of Mavic Pro 2 camera
-        , drone_altitude_m = 20             # height of drone altitude
-                                 ):
-        # Ground Sampling Distance
-        gsd = (sensor_height_mm * drone_altitude_m) / (focal_length_mm *image_height_px)
-
-        # Apparent person height in meters
-        apparent_height_m = bounding_box_height_px * gsd
-
-        # Estimate horizontal ground distance from nadir (under drone) to person
-        ground_distance = (person_height_real * focal_length_mm) / (bounding_box_height_px * sensor_height_mm) * drone_altitude_m
-
-        # Slant (3D) distance from drone to person
-        slant_distance = math.sqrt(ground_distance**2 + drone_altitude_m**2)
-
-        return {
-            "GSD": gsd,
-            "Apparent height": apparent_height_m,
-            "Ground distance": ground_distance,
-            "Slant distance": slant_distance
-        }
     
-    def get_estimated_coordinates(self, bounding_box_height_px, image_height_px, x_d, y_d):
-        x_p = None
-        y_p = None
+    def euler_to_rotation_matrix(self, roll, pitch, yaw):
+        Rx = np.array([
+            [1, 0, 0],
+            [0, np.cos(roll), -np.sin(roll)],
+            [0, np.sin(roll), np.cos(roll)]
+        ])
 
-        # x_d = x_d
-        # y_d = y_d
-        theta = math.radians(30)
+        Ry = np.array([
+            [np.cos(pitch), 0, np.sin(pitch)],
+            [0, 1, 0],
+            [-np.sin(pitch), 0, np.cos(pitch)]
+        ])
 
-        print(f'Estimating person coordinates: {x_d}, {y_d}')
+        Rz = np.array([
+            [np.cos(yaw), -np.sin(yaw), 0],
+            [np.sin(yaw), np.cos(yaw), 0],
+            [0, 0, 1]
+        ])
 
-        estimate_distance = self.estimate_person_distiance(bounding_box_height_px=bounding_box_height_px, image_height_px=image_height_px)
+        return Rz @ Ry @ Rx
 
-        x_p = x_d + estimate_distance['GSD'] * math.cos(theta)
-        y_p = y_d + estimate_distance['GSD'] * math.sin(theta)
 
-        return x_p, y_p
+    def estimate_location(self, pixel_coord):
+        x_drone, y_drone, z_drone = self.gps.getValues()
+        drone_roll, drone_pitch, drone_yaw = self.imu.getRollPitchYaw()
+        gimbal_pitch = self.camera_pitch_sensor.getValue()
+        camera_pitch = drone_pitch - gimbal_pitch
+
+        width = self.camera.getWidth()
+        height = self.camera.getHeight()
+        x_pixel, y_pixel = pixel_coord
+
+        fov_rad = self.camera.getFov()
+        f = width / (2 * np.tan(fov_rad/2))
+
+        cx, cy = width / 2, height / 2
+        K_inv = np.linalg.inv(np.array([
+            [f, 0, cx],
+            [0, f, cy],
+            [0, 0, 1]
+        ]))
+
+        # Image to normalized camera coordinates
+        pixel_vec = np.array([x_pixel, y_pixel, 1])
+        cam_ray = K_inv @ pixel_vec
+        cam_ray /= np.linalg.norm(cam_ray)  # Normalize direction
+
+        # Convert to world coordinates
+        R_drone_to_world = self.euler_to_rotation_matrix(drone_roll, camera_pitch, drone_yaw)
+        world_ray = R_drone_to_world @ cam_ray
+
+        # Ray origin is drone position
+        origin = np.array([x_drone, y_drone, z_drone])
+
+        # Solve for intersection with ground plane z = 0
+        t = -origin[2] / world_ray[2]  # z = 0 -> solve for t
+        
+        # if t < 0:
+        #     print(t)
+            # return None  # Ray points upward or parallel to ground
+        
+
+
+        world_point = origin + t * world_ray
+        # print(f'World Ray: {world_ray}')
+        # print(f't: {t}')
+        # print(f'Ground intersection: {world_point}')
+        # print("Drone pitch:", np.degrees(drone_pitch))
+        # print("Gimbal pitch sensor (degrees):", np.degrees(gimbal_pitch))
+        # print("Total camera pitch (degrees):", np.degrees(drone_pitch + gimbal_pitch))
+        # print("Pixel:", pixel_coord)
+        # print("Cam ray:", cam_ray)
+        # print("Drone pos:", (x_drone, y_drone, z_drone))
+        # print("World ray:", world_ray)
+        # print("Intersection:", world_point[:2])
+        # print("Roll, Pitch, Yaw (degrees):", np.degrees(drone_roll), np.degrees(drone_pitch), np.degrees(drone_yaw))
+        # print("Gimbal pitch (degrees):", np.degrees(gimbal_pitch))
+        return world_point[:2]  # Return (x, y) only
 
     def run(self):
         print(f'Starting up {self.getName()}')
@@ -390,6 +433,7 @@ class Mavic(Robot):
 
             telemetry_data = {
                 "x_d": int(x_pos), "y_d": int(y_pos), "altitude": altitude,
+                "est_x": False, "est_y": False,
                 "roll": roll, "pitch": pitch, "yaw": yaw,
                 "conf": 0.0, "person_found": False, "vlm_description": False,
                 "requires_assistance": False, "assistance_instructions": '', "detection_id": False
@@ -431,8 +475,14 @@ class Mavic(Robot):
                             cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
                             telemetry_data['conf'] = best_conf
                             best_conf = 0
+                            person_x = x1
+                            person_y = y1
 
-            if person_detected and (int(x_pos), int(y_pos)) not in detections and self.far_from_other_detections(new_detection=(int(x_pos), int(y_pos)), detections=detections):
+                            est_loc = self.estimate_location((person_x, person_y))
+                            est_x = int(est_loc[0])
+                            est_y = int(est_loc[1])
+
+            if person_detected and (est_x, est_y) not in detections and self.far_from_other_detections(new_detection=(est_x, est_y), detections=detections):
                 # print(f'Person Detected. {int(x_pos)},{int(y_pos)}')
                 #print("YOLO has detected a person. Running Florence-2 to get image description")
                 prompt = "Describe the image"
@@ -455,15 +505,6 @@ class Mavic(Robot):
                     telemetry_data['person_found'] = True if '1. Person Found' in LLM_response else False
                     telemetry_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
                     telemetry_data['assistance_instructions'] = LLM_response
-
-                    if telemetry_data['person_found'] == True:
-                        detections.append((int(x_pos), int(y_pos)))
-                        detection_id += 1
-
-                    telemetry_data['detection_id'] = 'test_1_'+str(detection_id)
-
-                    
-
                 except HfHubHTTPError as e:
                     if "402 Client Error" in str(e):
                         print('Max calls for free trier credits.')
@@ -474,9 +515,6 @@ class Mavic(Robot):
                         telemetry_data['requires_assistance'] = 'N/A'
                         telemetry_data['assistance_instructions'] = LLM_response
                         telemetry_data['detection_id'] = detection_id
-
-                        detections.append((int(x_pos), int(y_pos)))
-                        detection_id += 1
                     else:
                         raise
 
@@ -484,20 +522,14 @@ class Mavic(Robot):
                     cv2.putText(bgr_image, f"Person found...", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
 
-                    # vlm_detection = f'{detection_id}_vlm_detection.jpg'
-                    # vlm_detection_path = os.path.join(detections_folder, vlm_detection)
+                    telemetry_data['est_x'] = int(est_loc[0])
+                    telemetry_data['est_y'] = int(est_loc[1])
 
-                    # cv2.imwrite(vlm_detection_path, bgr_image)
+                    detections.append((int(est_loc[0]), int(est_loc[1])))
+                    detection_id += 1
 
+                    telemetry_data['detection_id'] = 'test_1_'+str(detection_id)
 
-                    # get estimated cooridnate location
-                    # x_p, y_p = self.get_estimated_coordinates(bounding_box_height_px=bounding_box_height
-                    #                                         , image_height_px=pil_image.height
-                    #                                         , x_d=x_pos
-                    #                                         , y_d=y_pos)
-
-                    # telemetry_data['x_d'] = x_p
-                    # telemetry_data['y_d'] = y_p
 
                     # Encrypt and send telemetry data for mapping
                     telemetry_json = json.dumps(telemetry_data)
