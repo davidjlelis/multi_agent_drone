@@ -470,10 +470,13 @@ class Mavic(Robot):
 
                         LLM_response = 'Max calls for free trier credits.'
                         telemetry_data['vlm_description'] = vlm_description
-                        telemetry_data['person_found'] = 'N/A'
+                        telemetry_data['person_found'] = True
                         telemetry_data['requires_assistance'] = 'N/A'
                         telemetry_data['assistance_instructions'] = LLM_response
                         telemetry_data['detection_id'] = detection_id
+
+                        detections.append((int(x_pos), int(y_pos)))
+                        detection_id += 1
                     else:
                         raise
 

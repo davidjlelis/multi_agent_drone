@@ -56,8 +56,9 @@ def is_emergency(description: str) -> bool:
 
         Description: "{description}"
 
-        Respond with "Person Found" only if the description contains a person and if so, determine 
-        if the person may be injured or in danger and what assistance they would need from first responders.
+        Explain the scene. Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Assistance"
+        if and only if the person may be injured or in danger. If they are not injured, state "2. Person does not require assistance". If the
+        person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
     """
     
     completion = client.chat.completions.create(
@@ -82,6 +83,7 @@ json_results_path = '../videos/results/JSON/'
 
 results_data = {"conf": 0.0, "vlm_description": False ,"person_found": False, "requires_assistance": False,
                 "assistance_instructions": '', "detection_id": False, "video": False}
+
 for video_file_name in os.listdir(video_path):
     if video_file_name.endswith('.mp4'):
         print(f'Processing {video_file_name}')
@@ -137,6 +139,7 @@ for video_file_name in os.listdir(video_path):
 
                 # Pass descrption through LLM to get rescue guidance
                     LLM_response = is_emergency(vlm_description)
+                    # print(LLM_response)
                     #insert into client response
                     results_data['vlm_description'] = vlm_description
                     results_data['person_found'] = True if '1. Person Found' in LLM_response else False
@@ -156,7 +159,13 @@ for video_file_name in os.listdir(video_path):
                         results_data['video'] = video_file_name
                         # continue
                     else:
-                        raise
+                        LLM_response = 'Max calls for free trier credits.'
+                        results_data['vlm_description'] = vlm_description
+                        results_data['person_found'] = 'N/A'
+                        results_data['requires_assistance'] = 'N/A'
+                        results_data['assistance_instructions'] = f'Error occured. {e}'
+                        results_data['detection_id'] = f'{video_file_name}_{frame_number}'
+                        results_data['video'] = video_file_name
 
                 if results_data['person_found'] or results_data['assistance_instructions'] == 'Max calls for free trier credits.':
                     json_output_path = f'{json_results_path}{json_file_name}'
