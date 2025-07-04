@@ -389,48 +389,49 @@ if __name__ == "__main__":
     # ]
 
     waypoints = [
-                    {'x': -36.75, 'y': -42.55},     # Start
-                    {'x': 42.75, 'y': -42.55},      # East
-                    {'x': -36.75, 'y': -42.55},     # West
+                    {'x': -36.75, 'y': -42.55, 'end': False},     # Start
+                    {'x': 42.75, 'y': -42.55, 'end': False},      # East
+                    {'x': -36.75, 'y': -42.55, 'end': False},     # West
 
-                    {'x': -36.75, 'y': -27.65},     # North
-                    {'x': 42.75, 'y': -27.65},      # East
-                    {'x': -36.75, 'y': -27.65},     # West
+                    {'x': -36.75, 'y': -27.65, 'end': False},     # North
+                    {'x': 42.75, 'y': -27.65, 'end': False},      # East
+                    {'x': -36.75, 'y': -27.65, 'end': False},     # West
 
-                    {'x': -36.75, 'y': -12.75},     # North
-                    {'x': 42.75, 'y': -12.75},      # East
-                    {'x': -36.75, 'y': -12.75},     # West
+                    {'x': -36.75, 'y': -12.75, 'end': False},     # North
+                    {'x': 42.75, 'y': -12.75, 'end': False},      # East
+                    {'x': -36.75, 'y': -12.75, 'end': False},     # West
 
-                    {'x': -36.75, 'y': 2.15},       # North
-                    {'x': 42.75, 'y': 2.15},        # East
-                    {'x': -36.75, 'y': 2.15},       # West
+                    {'x': -36.75, 'y': 2.15, 'end': False},       # North
+                    {'x': 42.75, 'y': 2.15, 'end': False},        # East
+                    {'x': -36.75, 'y': 2.15, 'end': False},       # West
 
-                    {'x': -36.75, 'y': 17.05},      # North
-                    {'x': 42.75, 'y': 17.05},       # East
-                    {'x': -36.75, 'y': 17.05},      # West
+                    {'x': -36.75, 'y': 17.05, 'end': False},      # North
+                    {'x': 42.75, 'y': 17.05, 'end': False},       # East
+                    {'x': -36.75, 'y': 17.05, 'end': False},      # West
 
-                    {'x': -36.75, 'y': 31.95},      # North
-                    {'x': 42.75, 'y': 31.95},       # East
-                    {'x': -36.75, 'y': 31.95},      # West
+                    {'x': -36.75, 'y': 31.95, 'end': False},      # North
+                    {'x': 42.75, 'y': 31.95, 'end': False},       # East
+                    {'x': -36.75, 'y': 31.95, 'end': False},      # West
 
-                    {'x': -36.75, 'y': 46.85},      # North
-                    {'x': 42.75, 'y': 46.85},       # East
-                    {'x': -36.75, 'y': 46.85},       # West
+                    {'x': -36.75, 'y': 46.85, 'end': False},      # North
+                    {'x': 42.75, 'y': 46.85, 'end': False},       # East
+                    {'x': -36.75, 'y': 46.85, 'end': False},       # West
 
-                    {'x': -36.75, 'y': -42.55},      # South
-                    {'x': -36.75, 'y': 46.85},       # North
-                    {'x': -10.25, 'y': 46.85},       # East
+                    {'x': -36.75, 'y': -42.55, 'end': False},      # South
+                    {'x': -36.75, 'y': 46.85, 'end': False},       # North
+                    {'x': -10.25, 'y': 46.85, 'end': False},       # East
 
-                    {'x': -10.25, 'y': -42.55},      # South
-                    {'x': -10.25, 'y': 46.85},       # North                    
-                    {'x': 16.25, 'y': 46.85},        # East
+                    {'x': -10.25, 'y': -42.55, 'end': False},      # South
+                    {'x': -10.25, 'y': 46.85, 'end': False},       # North                    
+                    {'x': 16.25, 'y': 46.85, 'end': False},        # East
 
-                    {'x': 16.25, 'y': -42.55},      # South
-                    {'x': 16.25, 'y': 46.85},       # North
-                    {'x': 42.75, 'y': 46.85},       # East
+                    {'x': 16.25, 'y': -42.55, 'end': False},      # South
+                    {'x': 16.25, 'y': 46.85, 'end': False},       # North
+                    {'x': 42.75, 'y': 46.85, 'end': False},       # East
 
-                    {'x': 42.75, 'y': -42.55}       # South
-                ]
+                    {'x': 42.75, 'y': -42.55, 'end': False},       # South
+                    {'x': 0, 'y': 0, 'end': True}
+                                                    ]
 
     print(f"Waypoints created {x_dim} m x {y_dim} m \n {waypoints}")
 

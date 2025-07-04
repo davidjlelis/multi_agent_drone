@@ -60,9 +60,6 @@ except KeyError:
 
 client = InferenceClient(provider="nebius", api_key=hf_api)
 
-# end of search
-end_of_search = False
-
 def clamp(value, value_min, value_max):
     return min(max(value, value_min), value_max)
 
@@ -117,6 +114,7 @@ class Mavic(Robot):
         self.target_position = [0, 0, 0]
         self.target_index = 0
         self.target_altitude = 20
+        self.end_of_search = False
 
         # Connect to server to get waypoints
         self.server_ip = 'localhost'
@@ -161,7 +159,6 @@ class Mavic(Robot):
         self.current_pose = [float(p) for p in pos]  # Ensure all positions are floats
 
     def move_to_target(self, verbose_movement=False, verbose_target=False):
-        global end_of_search
         if self.target_position[0:2] == [0, 0]:  # Initialization
             self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0]
             if verbose_target:
@@ -169,12 +166,13 @@ class Mavic(Robot):
 
         # if the robot is at the position with a precision of target_precision
         if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
-
             self.target_index += 1
-            if self.target_index > len(self.waypoints) - 1:
-                self.target_position[0:2] = [0,0]
-                end_of_search = True
-                # self.target_index = 0
+
+            if self.waypoints[self.target_index]['end']:
+                self.end_of_search = True
+
+            if self.target_index > len(self.waypoints) - 1 and not self.end_of_search:
+                self.target_index = 0
             else:
                 self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
             if verbose_target:
@@ -204,76 +202,16 @@ class Mavic(Robot):
                 angle_left, distance_left))
         return yaw_disturbance, pitch_disturbance
 
-    # def move_to_target(self):
-    #     # Ensure target_position and current_pose are floats
-    #     target_position_floats = [float(x) for x in self.target_position]
-    #     current_pose_floats = [float(x) for x in self.current_pose[0:2]]
-
-    #     # defaults to the edge of the environment
-    #     # if target_position_floats[0:2] == [0, 0]:
-    #     #     print(f'Setting inital waypoint {self.waypoints[0]}')
-    #     #     self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0] 
-
-    #     if self.target_position[0:2] == [0, 0]:
-    #         print(f'Setting inital waypoint {self.waypoints[0]}')
-    #         self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0]
-
-    #     # Compare positions to check if the drone has reached the target
-    #     if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, current_pose_floats[0:2])]):
-    #         self.target_index = (self.target_index + 1) % len(self.waypoints)
-    #         self.target_position = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
-    #         print(f'Moving towards {self.target_position}')
-
-    #     # Ensure float conversion during calculations
-    #     # self.target_position[2] = np.arctan2(
-    #     #     float(self.target_position[1]) - float(self.current_pose[1]),
-    #     #     float(self.target_position[0]) - float(self.current_pose[0])
-    #     # )
-
-    #     angle_left = self.target_position[2] - float(self.current_pose[5])
-    #     angle_left = (angle_left + 2 * np.pi) % (2 * np.pi)
-    #     if angle_left > np.pi:
-    #         angle_left -= 2 * np.pi
-
-    #     #yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
-    #     yaw_disturbance = clamp(self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi), -self.MAX_YAW_DISTURBANCE, self.MAX_YAW_DISTURBANCE)
-    #     pitch_disturbance = clamp(np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
-
-    #     # Check if the drone is sufficiently close to the target, then reduce disturbance
-    #     if abs(angle_left) < 0.05:  # Small angle difference threshold to stop rotating
-    #         yaw_disturbance = 0
-    #         pitch_disturbance = 0      
-
-    #     return yaw_disturbance, pitch_disturbance
-
-
-
-    # def estimate_person_location(self, drone_loc):
-    #     x_d, y_d = drone_loc['x_d'], drone_loc['y_d']
-    #     altitude, pitch, yaw = drone_loc['altitude'], drone_loc['pitch'], drone_loc['yaw']
-
-    #     yaw_rad = math.radians(yaw)
-    #     pitch_rad = math.radians(pitch)
-
-    #     if pitch >= 90:
-    #         return round(x_d, 5), round(y_d, 5)
-
-    #     d = altitude * math.tan(pitch_rad)
-    #     x_p = x_d + d * math.cos(yaw_rad)
-    #     y_p = y_d + d * math.sin(yaw_rad)
-
-    #     return round(x_p, 5), round(y_p, 5)
-
     def is_emergency(self, description: str) -> bool:
         prompt = f"""
             You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
-            safe or injured. Currently, it is being done in a 3D simualtion so assume renderings are real. 
+            safe or injured. Currently, it is being done in a 3D simulation so assume all 3D renderings are real. 
             Given the description below, provide a response only if a person is found.
 
             Description: "{description}"
 
             Explain the scene. Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Assistance"
-            if and only if the person may be injured or in danger. If they are not injured, state "2. Person does not require assistance". If the
+            if and only if the person may be injured or in a dangerous situation. If they are not injured or in a dangerous situation, state "2. Person does not require assistance". If the
             person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
         """
         
@@ -542,16 +480,15 @@ class Mavic(Robot):
                         break  # Exit the run() loop if server is gone
 
                 best_conf = 0.0
-
-            if end_of_search and x_pos < 0.5 and x_pos > -0.5 and y_pos < 0.5 and y_pos > -0.5:
+            
+            if self.target_position == [0,0] and x_pos > -0.5 and x_pos < 0.5 and y_pos > -0.5 and y_pos < 0.5 and self.end_of_search:
                 self.target_altitude = 0
-                
-            if end_of_search and altitude < 0.25:
+
+            if self.target_altitude < 0.25 and self.end_of_search:
                 self.front_left_motor.setVelocity(0)
                 self.front_right_motor.setVelocity(0)
                 self.rear_left_motor.setVelocity(0)
                 self.rear_right_motor.setVelocity(0)
-                break
 
             if altitude > self.target_altitude - 1:
                 if self.getTime() - t1 > 0.1:
