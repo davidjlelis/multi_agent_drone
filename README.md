@@ -5,42 +5,41 @@ Created by: David Lelis (N00957151)
 
 Supervised by: Ayan Dutta, PhD
 
-Update as of 2025.05.18: The system currently is able to detect people in an environment to 70% confidence and return back coordinate information so the server computes a path from origin (center of the map / 50,50) to the goal coordinate that is supposed to be the person found. However, a couple of issues have arose:
-1. The system doesn't have a way to determine if a scenario involving a person has already been discovered and skip ahead. This means that one scene with a person is being repeatedly detected until the drone passes them, making for multiple paths to the same person.
-2. Issue 1 has also shown that the RRT* algorith may also be creating new trees each time instead of using the exsisting tree. Need to update to use the existing tree and update paths to goal coordinates using that.
+Update as of 2025.07.03: The system is currently able to detect people in an environment, determine what the person is doing the scene, return back a response to assist the person, and provide fairly accurate coordinates of the person's location. Testing is currently being done on the environment to evaluate accuracy and quality of the response. 
 
 ## Introduction
 Purpose: Create a multi-agent vision-language-action (VLA) drone system that is used to survey an environment for dangerous scenarios or injured individuals.
 
 ## Methodology
-The framework is made up of four agents: an object detection model to detect people, a Vision-Language Model (VLM), a Large Language Model (LLM), Environment Exploration, and a Pathfinding algorithm. There are assumptions that the system takes:
+The framework is made up of four agents: an object detection model to detect people, a Vision-Language Model (VLM), a Large Language Model (LLM), and a Pathfinding algorithm. There are assumptions that the system takes:
 
-1. The environment at some point has been mapped in the past via GPS or other mapping system.
+1. The environment at some point has been mapped in the past via GPS or other mapping system to observe obstacles.
 2. There may be mulitple victims requiring assistance and multiple SAR first responder teams allowing for all paths start from the homebase.
-3. The environment the system is in is confirmed to be considered a disaster, therefore everyone in the environment needs some level of rescue but some may be injured and require specific assistance.
+3. The environment the system is in is confirmed to be considered a disaster and people in the environment may require direct assistance.
+
+The framework flows from object detection to a VLM that computes a description of a scene to a LLM that computes a response to the description and to a Pathfinding algorithm that computes a path from the origin point to the victim(s) location.
 
 ### Object Detection Model: YOLOv8
-YOLOv8 is an object detection model that is used to detect people. As it is assumed that people may be in the environment, the model will flag when a person is detected to a 90% confidence that is provided by the results of running the image through the model. This is also used as the VLM is computationally intensive and would slow down the system if it was solely running as the person detection model. If a person is detected in the image, the framework will move the image through the VLM.
+YOLOv8 is an object detection model that is used to detect people. As it is assumed that people may be in the environment, the model will flag when a person is detected to a 40% confidence that is provided by the results of running the image through the model. This percentage was found to be the most effective due to the unique angle that drones observe when flying above people. This is also used as the VLM is computationally intensive and would slow down the system if it was solely running as the person detection model. If a person is detected in the image, the framework will move the image through the VLM.
 
 ### Vision-Language Model (VLM): Florence2-base
-The VLM being used in the framework is Florence2-base, a lightweight VLM that can provide basic text from an image. The purpose of the VLM is to provide a description of the image that the object detection model had flagged. The description is then moved through the LLM. 
+The VLM being used in the framework is Florence2-base, a lightweight VLM that can provide basic text from an image. The purpose of the VLM is to provide a description of the image that the object detection model had flagged. The description is then moved through the LLM to provide a response to the details in the scene. 
 
 ### Large-Language Model (LLM): Qwen2.5-72B
 The LLM used in the framework is Qwen2.5-72B and is ran online as it is computationally intensive, more so than the VLM. The image description is ran through the model with the given prompt:
 
             You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
-            safe or injured. Currently, it is being done in a 3D simualtion so assume renderings are real. 
+            safe or injured. Currently, it is being done in a 3D simulation so assume all 3D renderings are real. 
             Given the description below, provide a response only if a person is found.
 
             Description: "{description}"
 
-            Respond with "Person Found" if the description contains a person and if so, determine 
-            if the person may be injured or in danger and what assistance they would need from first responders.
+            Explain the scene. Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Assistance" if and only if the person may be injured or in a dangerous situation. If they are not injured or in a dangerous situation, state "2. Person does not require assistance". If the person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
 
-As seen, the model is instructed to return a JSON string in order to easily detect if a person is found, if they may require special assistance, and the instructions to assist the victim. This will be sent to the server along with the coordinates of the scene to pass onto first responders to evacuate the victim as necessary.
+The response to the description allows for a second level of filteration as YOLO may pick up similar humanoid shapes that may not be people in a scene. LLM is also tasked to analyze the description to determine if the person is in a dangerous situation and if so, what assistance they need from first responders.
 
-### Environment Exploration
-It is assumed that the environment that the system is placed in as been mapped before, however due to most disaster events causing significant damage and change to an environment, it can't be assumed that the environment is the same as originally mapped. The assumption is placed so drones can easily navigate the environment given previous knowledge, but should also be able to adapt to new environmental changes. This part of the framework will tackle that aspect by including obstacle avoidance techniques. (TBD as of 2025.05.06)
+### Pathfinding Algorithm: Rapidly-Exploring Random Trees Star (RRT*)
+The pathfinding algorithm used in the current framework is RRT* due to it's efficiency. A new tree is created and searched for each victim found.
 
-### Pathfinding Algorithm: A* or RRT
-Once a victim is found, the finding the fastest path is crucial to keep them safe. Combining the assumption of the environment being previously mapped and the new knowledge of any changes in the environment, a path from the homebase of the drone system to the victim will be made. (TBD as of 2025.05.06)
+## Future Work
+In terms of implementation, the future research should explore more efficient methods to execute the framework and more detailed environments. Currently, the framework is having trouble detecting persons in the current simulation due to the lack of detail some of these models have. Secondly, the VLM-aspect of the framework is having trouble with properly describing the scene percisely. For example in one scene, a person is lying infront of a forest. However, the VLM describes the person as "A man in a suit is jumping in the air." This may be due to the drone's position, the simulation's lack of detail of the ground, or the person's position while lying flat.
