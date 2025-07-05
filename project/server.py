@@ -352,42 +352,6 @@ if __name__ == "__main__":
     x_path = x_dim-20
     y_path = y_dim-20
 
-    # waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
-    print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
-
-
-    # manually make waypoints
-    # waypoints = [ {'x': -40, 'y': -40},         #   Start
-    #                 {'x': 40, 'y': -40},        #   Right
-    #                 {'x': -40, 'y': -40},        #   Left
-    #                 {'x': -40, 'y': -20},       #   Up
-    #                 {'x': 40, 'y': -20},        #   Right
-    #                 {'x': -40, 'y': -20},       #   Left
-    #                 {'x': -40, 'y': 0},         #   Up
-    #                 {'x': 40, 'y': 0},          #   Right
-    #                 {'x': -40, 'y': 0},         #   Left
-    #                 {'x': -40, 'y': 20},        #   Up
-    #                 {'x': 40, 'y': 20},         #   Right
-    #                 {'x': -40, 'y': 20},        #   Left
-    #                 {'x': -40, 'y': 40},        #   Up
-    #                 {'x': 40, 'y': 40},         #   Right
-
-    #                 {'x': 40, 'y': -40},        #   Down
-    #                 {'x': 40, 'y': 40},         #   Up
-    #                 {'x': 20, 'y': 40},         #   Left
-    #                 {'x': 20, 'y': -40},        #   Down
-    #                 {'x': 20, 'y': 40},         #   Up
-    #                 {'x': 0, 'y': 40},          #   Left
-    #                 {'x': 0, 'y': -40},         #   Down
-    #                 {'x': 0, 'y': 40},          #   Up
-    #                 {'x': -20, 'y': 40},        #   Left
-    #                 {'x': -20, 'y': -40},       #   Down
-    #                 {'x': -20, 'y': 40},        #   Up
-    #                 {'x': -40, 'y': 40},        #   Left
-    #                 {'x': -40, 'y': -40},       #   Down
-    #                 {'x': -40, 'y': 40}         #   Up
-    # ]
-
     waypoints = [
                     {'x': -36.75, 'y': -42.55, 'end': False},     # Start
                     {'x': 42.75, 'y': -42.55, 'end': False},      # East
@@ -435,50 +399,51 @@ if __name__ == "__main__":
 
     print(f"Waypoints created {x_dim} m x {y_dim} m \n {waypoints}")
 
-    ### Testing RRT* Algorithm
-    # Environment 1 Obstacles 
-    environment = [
-        {
-            'name': 'start'
-            , 'x': 0
-            , 'y': 0
-        },
-        {
-            'name': 'obstacle_1'
-            , 'lower_x': 28
-            , 'upper_x': 44
-            , 'lower_y': -8
-            , 'upper_y': 9
-        }, 
-        {
-            'name': 'obstacle_2'
-            , 'lower_x': -27
-            , 'upper_x': -5
-            , 'lower_y': 16
-            , 'upper_y': 38
-        }, 
-        {
-            'name': 'obstacle_3'
-            , 'lower_x': 23
-            , 'upper_x': 47
-            , 'lower_y': 22
-            , 'upper_y': 38
-        }, 
-        {
-            'name': 'obstacle_4'
-            , 'lower_x': 2
-            , 'upper_x': 13
-            , 'lower_y': 40
-            , 'upper_y': 50
-        },
-        {
-            'name': 'obstacle_5'
-            , 'lower_x': -13
-            , 'upper_x': 13
-            , 'lower_y': -12
-            , 'upper_y': -28
-        }
-    ]
+    # waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
+    print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
+
+    test_world = "" 
+
+    world_input = input("""
+===============================================================================================================
+                        Please select number that corresponds to the active test world: \n
+                        1. Test World 1 (Neutral)
+                        2. Test World 2 (Flood)
+                        3. Test World 3 (Forest Fire)
+                        4. Test World 4 (Earthquake)\n
+===============================================================================================================
+                        Selection: """)
+    print("""
+===============================================================================================================
+""")
+
+    if world_input == "1":
+        test_world = "test_world_1"
+    elif world_input == "2":
+        test_world = "test_world_2"
+    elif world_input == "3":
+        test_world = "test_world_3"
+    else:
+        print('Invalid Input.')
+        quit()
+
+    world_description_fp = './world_descriptions/worlds.json'
+    environment = []
+    world_description_json = []
+    world_description = ''
+
+    with open(world_description_fp) as f:
+        world_description_json = json.load(f)
+
+    for desc in world_description_json:
+        if desc['world_name'] == test_world:
+            environment = desc['environment']
+            world_description = desc['world_description']
+            world_name = desc['world_name']
+            
+    world_details = { 'world_name': world_name
+                    , 'world_description': world_description
+                    , 'waypoints': waypoints}
 
     start = (0,0)
     goals = []
@@ -517,7 +482,7 @@ if __name__ == "__main__":
         s.bind((HOST, PORT))
         s.listen()
         print(f"Server listening on {HOST}:{PORT}")
-        accept_thread = threading.Thread(target=accept_clients, args=(s, waypoints, ), daemon=True)
+        accept_thread = threading.Thread(target=accept_clients, args=(s, world_details, ), daemon=True)
         accept_thread.start()
 
         while server_running:

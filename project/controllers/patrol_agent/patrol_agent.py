@@ -121,10 +121,13 @@ class Mavic(Robot):
         self.server_port = 5555
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.server_ip, self.server_port))
-        self.waypoints = self.get_waypoints_from_server()
+        self.world_details = self.get_world_details_from_server()
+        self.waypoints = self.world_details['waypoints']
+        self.world_description = self.world_details['world_description']
+        self.world_name = self.world_details['world_name']
         print(f"Recieved {len(self.waypoints)} from waypoints from server")
 
-    def get_waypoints_from_server(self):
+    def get_world_details_from_server(self):
         try:
             print(f"[Waypoint Client] Connected to server at {self.server_ip}:{self.server_port}")
 
@@ -146,9 +149,9 @@ class Mavic(Robot):
                 data += packet
 
             self.client_socket.sendall(b'READY')
-            waypoints = json.loads(data.decode('utf-8'))
-            print(f"[Waypoint Client] Received and parsed waypoints successfully. {waypoints}")
-            return waypoints
+            world_details = json.loads(data.decode('utf-8'))
+            print(f"[Waypoint Client] Received and parsed waypoints successfully. {world_details['waypoints']}")
+            return world_details
 
         except Exception as e:
             print(f"[Waypoint Client] Error: {e}")
@@ -204,8 +207,10 @@ class Mavic(Robot):
 
     def is_emergency(self, description: str) -> bool:
         prompt = f"""
-            You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
-            safe or injured. Currently, it is being done in a 3D simulation so assume all 3D renderings are real. 
+            You are a search-and-rescue assistant in the following environment:{self.world_description}
+             
+            You're tasked to confirm if people are present in a location and if they are safe or injured. 
+            Currently, it is being done in a 3D simulation so assume all 3D renderings are real. 
             Given the description below, provide a response only if a person is found.
 
             Description: "{description}"
@@ -374,7 +379,8 @@ class Mavic(Robot):
                 "est_x": False, "est_y": False,
                 "roll": roll, "pitch": pitch, "yaw": yaw,
                 "conf": 0.0, "person_found": False, "vlm_description": False,
-                "requires_assistance": False, "assistance_instructions": '', "detection_id": False
+                "requires_assistance": False, "assistance_instructions": '', 
+                "world_name": self.world_name, "detection_id": False
             }
 
             height = self.camera.getHeight()
@@ -466,7 +472,7 @@ class Mavic(Robot):
                     detections.append((int(est_loc[0]), int(est_loc[1])))
                     detection_id += 1
 
-                    telemetry_data['detection_id'] = 'test_1_'+str(detection_id)
+                    telemetry_data['detection_id'] = detection_id
 
 
                     # Encrypt and send telemetry data for mapping

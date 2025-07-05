@@ -2,7 +2,7 @@
 {
     "world_name": "test_world_1"
     , "world_description": "A small suburban area with a school, houses, and small marts."
-    , "obstacles": [
+    , "environment": [
         {
             "name": "start"
             , "x": 0
@@ -47,7 +47,58 @@
 }
 , {
     "world_name": "test_world_2"
-    , "world_description": "A small town affected by a flood."
-    , "obstacles": []
+    , "world_description": "A small town affected by a hurricane and flood."
+    , "environment": [
+        {
+            "name": "start"
+            , "x": 0
+            , "y": 0
+        },
+        {
+            "name": "obstacle_1"
+            , "lower_x": 28
+            , "upper_x": 44
+            , "lower_y": -8
+            , "upper_y": 9
+        }, 
+        {
+            "name": "obstacle_2"
+            , "lower_x": -27
+            , "upper_x": -5
+            , "lower_y": 16
+            , "upper_y": 38
+        }, 
+        {
+            "name": "obstacle_3"
+            , "lower_x": 23
+            , "upper_x": 47
+            , "lower_y": 22
+            , "upper_y": 38
+        }, 
+        {
+            "name": "obstacle_4"
+            , "lower_x": 2
+            , "upper_x": 13
+            , "lower_y": 40
+            , "upper_y": 50
+        },
+        {
+            "name": "obstacle_5"
+            , "lower_x": -13
+            , "upper_x": 13
+            , "lower_y": -12
+            , "upper_y": -28
+        }
+    ]
+}
+, {
+    "world_name": "test_world_3"
+    , "world_description": "A small forest affected by a forest fire."
+    , "environment": []
+}
+, {
+    "world_name": "test_world_3"
+    , "world_description": "A small forest affected by an earthquake."
+    , "environment": []
 }
 ]
