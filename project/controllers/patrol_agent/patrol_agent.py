@@ -233,26 +233,26 @@ class Mavic(Robot):
 
         return completion.choices[0].message["content"]
     
-    def extract_json_from_text(self, text):
-        """
-        Extracts and returns a valid JSON object (as a dict) from a string containing additional content.
-        """
+    # def extract_json_from_text(self, text):
+    #     """
+    #     Extracts and returns a valid JSON object (as a dict) from a string containing additional content.
+    #     """
 
-        print(text)
-        try:
-            # Use regex to find a JSON-like block in the text
-            match = re.search(r'\{[\s\S]*\}', text)
-            if match:
-                json_str = match.group(0)
-                # Convert to dict
-                return json.loads(json_str)
-            else:
-                raise ValueError("No JSON object found in the text.")
-        except json.JSONDecodeError as e:
-            print("Invalid JSON format:", e)
-        except Exception as e:
-            print("Error:", e)
-        return {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
+    #     # print(text)
+    #     try:
+    #         # Use regex to find a JSON-like block in the text
+    #         match = re.search(r'\{[\s\S]*\}', text)
+    #         if match:
+    #             json_str = match.group(0)
+    #             # Convert to dict
+    #             return json.loads(json_str)
+    #         else:
+    #             raise ValueError("No JSON object found in the text.")
+    #     except json.JSONDecodeError as e:
+    #         print("Invalid JSON format:", e)
+    #     except Exception as e:
+    #         print("Error:", e)
+    #     return {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
 
     def far_from_other_detections(self, new_detection, detections):
         if len(detections) == 0:

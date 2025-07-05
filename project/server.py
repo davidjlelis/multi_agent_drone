@@ -280,7 +280,7 @@ def handle_client(conn, addr, waypoints):
                 with open(results_json_filepath, "w") as f:
                     json.dump(data, f, indent=4)
 
-                print(detection)
+                # print(detection)
                 # Assume detection includes drone state
                 # x_p, y_p = estimate_location(detection)
                 x = detection['est_x']
@@ -397,10 +397,10 @@ if __name__ == "__main__":
                     {'x': 0, 'y': 0, 'end': True}
                                                     ]
 
-    print(f"Waypoints created {x_dim} m x {y_dim} m \n {waypoints}")
+    # print(f"Waypoints created {x_dim} m x {y_dim} m \n {waypoints}")
 
     # waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
-    print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
+    # print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
 
     test_world = "" 
 
@@ -490,7 +490,7 @@ if __name__ == "__main__":
                 goal = goal_queue.get(timeout=0.1)
                 goal_name = goal['name']
                 goal_pos = (goal['x'], goal['y'])
-                print(f'Planning path to {goal_name}: {goal_pos}')
+                # print(f'Planning path to {goal_name}: {goal_pos}')
                 ax.plot(goal_pos[0], goal_pos[1], 'or')
 
                 rrt = RRTStar(start, goal_pos, map_size, obstacles)
@@ -499,7 +499,7 @@ if __name__ == "__main__":
                 if path:
                     px, py = zip(*path)
                     ax.plot(px, py, 'r-', linewidth=2)
-                    print(f'Path draw to {goal_name}')
+                    # print(f'Path draw to {goal_name}')
                 else:
                     print(f'WARNING: No Path to {goal_name}')
 
