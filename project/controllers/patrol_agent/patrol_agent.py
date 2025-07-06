@@ -173,6 +173,7 @@ class Mavic(Robot):
 
             if self.waypoints[self.target_index]['end']:
                 self.end_of_search = True
+                self.waypoints = [{'x': 0, 'y':0}]
 
             if self.target_index > len(self.waypoints) - 1 and not self.end_of_search:
                 self.target_index = 0
