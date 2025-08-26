@@ -93,12 +93,41 @@
 }
 , {
     "world_name": "test_world_3"
-    , "world_description": "A small forest affected by a forest fire."
-    , "environment": []
-}
-, {
-    "world_name": "test_world_3"
-    , "world_description": "A small forest affected by an earthquake."
-    , "environment": []
+    , "world_description": "An urban city neighborhood after an earthquake."
+    , "environment": [
+        {
+            "name": "start"
+            , "x": 0
+            , "y": 0
+        },
+        {
+            "name": "obstacle_1_auditorium"
+            , "lower_x": -48
+            , "upper_x": -12
+            , "lower_y": -46
+            , "upper_y": -10
+        }, 
+        {
+            "name": "obstacle_2_strip_building_1"
+            , "lower_x": 27
+            , "upper_x": 50
+            , "lower_y": -50
+            , "upper_y": -30
+        }, 
+        {
+            "name": "obstacle_3_strip_building_2"
+            , "lower_x": 27
+            , "upper_x": 50
+            , "lower_y": -23
+            , "upper_y": 27
+        }, 
+        {
+            "name": "obstacle_4_church"
+            , "lower_x": 27
+            , "upper_x": 37
+            , "lower_y": 35
+            , "upper_y": 50
+        }
+    ]
 }
 ]

@@ -270,6 +270,10 @@ def handle_client(conn, addr, waypoints):
                 break
             else:
                 decrypted_data = cipher.decrypt(data)
+
+                if decrypted_data == b"MISSION_COMPLETE":
+                    print("Survey completed! Drone has landed at (0,0).")
+
                 detection = json.loads(decrypted_data.decode('utf-8'))
 
                 with open(results_json_filepath, "r") as f:
@@ -293,6 +297,8 @@ def handle_client(conn, addr, waypoints):
                 else: 
                     goals.append(new_goal)
                     goal_queue.put(new_goal)
+        conn.close()
+        print("Connection Closed.")
 
     except (ConnectionResetError, BrokenPipeError) as e:
         print(f"⚠️ Connection lost with {addr}: {e}")
@@ -355,45 +361,45 @@ if __name__ == "__main__":
     waypoints = [
                     {'x': -36.75, 'y': -42.55, 'end': False},     # Start
                     {'x': 42.75, 'y': -42.55, 'end': False},      # East
-                    {'x': -36.75, 'y': -42.55, 'end': False},     # West
+                    # {'x': -36.75, 'y': -42.55, 'end': False},     # West
 
-                    {'x': -36.75, 'y': -27.65, 'end': False},     # North
+                    # {'x': -36.75, 'y': -27.65, 'end': False},     # North
                     {'x': 42.75, 'y': -27.65, 'end': False},      # East
                     {'x': -36.75, 'y': -27.65, 'end': False},     # West
 
                     {'x': -36.75, 'y': -12.75, 'end': False},     # North
                     {'x': 42.75, 'y': -12.75, 'end': False},      # East
-                    {'x': -36.75, 'y': -12.75, 'end': False},     # West
+                    # {'x': -36.75, 'y': -12.75, 'end': False},     # West
 
-                    {'x': -36.75, 'y': 2.15, 'end': False},       # North
+                    # {'x': -36.75, 'y': 2.15, 'end': False},       # North
                     {'x': 42.75, 'y': 2.15, 'end': False},        # East
                     {'x': -36.75, 'y': 2.15, 'end': False},       # West
 
                     {'x': -36.75, 'y': 17.05, 'end': False},      # North
                     {'x': 42.75, 'y': 17.05, 'end': False},       # East
-                    {'x': -36.75, 'y': 17.05, 'end': False},      # West
+                    # {'x': -36.75, 'y': 17.05, 'end': False},      # West
 
-                    {'x': -36.75, 'y': 31.95, 'end': False},      # North
+                    # {'x': -36.75, 'y': 31.95, 'end': False},      # North
                     {'x': 42.75, 'y': 31.95, 'end': False},       # East
                     {'x': -36.75, 'y': 31.95, 'end': False},      # West
 
                     {'x': -36.75, 'y': 46.85, 'end': False},      # North
                     {'x': 42.75, 'y': 46.85, 'end': False},       # East
-                    {'x': -36.75, 'y': 46.85, 'end': False},       # West
+                    # {'x': -36.75, 'y': 46.85, 'end': False},       # West
 
-                    {'x': -36.75, 'y': -42.55, 'end': False},      # South
-                    {'x': -36.75, 'y': 46.85, 'end': False},       # North
-                    {'x': -10.25, 'y': 46.85, 'end': False},       # East
+                    # {'x': -36.75, 'y': -42.55, 'end': False},      # South
+                    # {'x': -36.75, 'y': 46.85, 'end': False},       # North
+                    # {'x': -10.25, 'y': 46.85, 'end': False},       # East
 
-                    {'x': -10.25, 'y': -42.55, 'end': False},      # South
-                    {'x': -10.25, 'y': 46.85, 'end': False},       # North                    
-                    {'x': 16.25, 'y': 46.85, 'end': False},        # East
+                    # {'x': -10.25, 'y': -42.55, 'end': False},      # South
+                    # {'x': -10.25, 'y': 46.85, 'end': False},       # North                    
+                    # {'x': 16.25, 'y': 46.85, 'end': False},        # East
 
-                    {'x': 16.25, 'y': -42.55, 'end': False},      # South
-                    {'x': 16.25, 'y': 46.85, 'end': False},       # North
-                    {'x': 42.75, 'y': 46.85, 'end': False},       # East
+                    # {'x': 16.25, 'y': -42.55, 'end': False},      # South
+                    # {'x': 16.25, 'y': 46.85, 'end': False},       # North
+                    # {'x': 42.75, 'y': 46.85, 'end': False},       # East
 
-                    {'x': 42.75, 'y': -42.55, 'end': False},       # South
+                    # {'x': 42.75, 'y': -42.55, 'end': False},       # South
                     {'x': 0, 'y': 0, 'end': True}
                                                     ]
 
@@ -407,10 +413,9 @@ if __name__ == "__main__":
     world_input = input("""
 ===============================================================================================================
                         Please select number that corresponds to the active test world: \n
-                        1. Test World 1 (Neutral)
+                        1. Test World 1 (Neutral Suburban)
                         2. Test World 2 (Flood)
-                        3. Test World 3 (Forest Fire)
-                        4. Test World 4 (Earthquake)\n
+                        3. Test World 3 (Urban City)
 ===============================================================================================================
                         Selection: """)
     print("""

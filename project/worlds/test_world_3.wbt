@@ -3,12 +3,31 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/RoughConcrete.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/Church.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/road/protos/StraightRoadSegment.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Asphalt.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/StripBuilding.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/BusStop.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/Mailbox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/PublicBin.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/SnackStand.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/garden/protos/TableWithUmbrella.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/StoneFountain.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/StoneBench.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/trees/protos/BigSassafras.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/toyota/ToyotaPrius.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/dji/mavic/protos/Mavic2Pro.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/Auditorium.proto"
 
 WorldInfo {
+  basicTimeStep 16
+  defaultDamping Damping {
+  }
 }
 Viewpoint {
-  orientation -0.5773502691896257 0.5773502691896257 0.5773502691896257 2.0944
-  position 0.0005791985422716307 0.0005792001800027722 214.83529227401402
+  orientation 0.49750584939899106 -0.5110906825143962 -0.7009095833706064 4.389697001822551
+  position 6.196918466588576 -65.02461083826557 204.58567762694463
 }
 TexturedBackground {
 }
@@ -16,4 +35,397 @@ TexturedBackgroundLight {
 }
 RectangleArena {
   floorSize 100 100
+  floorTileSize 10 10
+  floorAppearance RoughConcrete {
+  }
+}
+Mavic2Pro {
+  translation 0 0 0.1
+  rotation 0.018741366150828255 0.0068501006753723176 -0.9998008988371323 2.370293239168405
+  name "drone_1"
+  controller "patrol_agent"
+  controllerArgs [
+    ""
+  ]
+  cameraSlot [
+    Camera {
+      fieldOfView 0.5
+      width 1280
+      height 720
+    }
+  ]
+}
+StoneBench {
+  translation -32.945 18.5962 0
+  rotation 0 0 1 0.523599
+}
+StoneBench {
+  translation -27.8266 21.5512 0
+  rotation 0 0 1 0.523599
+  name "stone bench(1)"
+}
+StoneBench {
+  translation -31.9634 22.5574 0
+  rotation 0 0 1 2.0944
+  name "stone bench(2)"
+}
+StoneBench {
+  translation -28.9934 17.4132 0
+  rotation 0 0 1 2.0944
+  name "stone bench(3)"
+}
+StoneFountain {
+  translation -30.3 19.8 0
+}
+TableWithUmbrella {
+  translation -16.63 14.3 0
+}
+TableWithUmbrella {
+  translation -16.63 10.46 0
+  name "table with umbrella(4)"
+}
+TableWithUmbrella {
+  translation -16.63 18.06 0
+  name "table with umbrella(1)"
+}
+TableWithUmbrella {
+  translation -16.63 21.51 0
+  name "table with umbrella(2)"
+}
+TableWithUmbrella {
+  translation -16.63 25.38 0
+  name "table with umbrella(3)"
+}
+SnackStand {
+  translation -1.95 26.25 0
+  rotation 0 0 1 -1.5707953071795862
+}
+SnackStand {
+  translation -8.45 26.25 0
+  rotation 0 0 1 -1.5707953071795862
+  name "snack stand(4)"
+}
+SnackStand {
+  translation -1.96 21.63 0
+  rotation 0 0 -1 -1.5707953071795862
+  name "snack stand(1)"
+}
+SnackStand {
+  translation -8.35 21.63 0
+  rotation 0 0 -1 -1.5707953071795862
+  name "snack stand(5)"
+}
+SnackStand {
+  translation -1.73 16.65 0
+  rotation 0 0 1 -1.5707953071795862
+  name "snack stand(2)"
+}
+SnackStand {
+  translation -8.22 16.65 0
+  rotation 0 0 1 -1.5707953071795862
+  name "snack stand(6)"
+}
+SnackStand {
+  translation -1.4 12.09 0
+  rotation 0 0 -1 -1.5707953071795862
+  name "snack stand(3)"
+}
+SnackStand {
+  translation -8.08 12.09 0
+  rotation 0 0 -1 -1.5707953071795862
+  name "snack stand(7)"
+}
+PublicBin {
+  translation -22.25 40.67 0
+}
+StraightRoadSegment {
+  translation 15 -50 0.1
+  rotation 0 0 1 1.57
+  name "main road"
+  length 81.5
+}
+StraightRoadSegment {
+  translation -50 35 0.1
+  name "uproad"
+  length 61
+}
+StraightRoadSegment {
+  translation 15 38.5 0.1
+  rotation 0 0 1 1.57
+  name "main road 2"
+  length 11.5
+}
+StraightRoadSegment {
+  translation 15 30 0.1
+  rotation 0 0 1 1.57
+  name "cross"
+  roadBorderHeight 0
+  length 11
+  pavementAppearance Asphalt {
+  }
+}
+Church {
+  translation 33 44 0
+  rotation 0 0 1 3.14159
+}
+BusStop {
+  translation -17.97 40.69 0
+  rotation 0 0 1 -1.5707953071795862
+}
+Mailbox {
+  translation -13.7 40.61 0.000190582
+  rotation -2.336819999987239e-06 -2.336819999987239e-06 0.9999999999945393 -1.5707953071795862
+}
+StripBuilding {
+  translation 27 -50 0
+  rotation 0 0 1 3.14159
+  name "strip building 1"
+  length 20
+}
+StripBuilding {
+  translation 27 -23 0
+  rotation 0 0 1 3.14159
+  name "strip building 2"
+  length 50
+}
+Transform {
+  translation -20.23 40.3 0
+  scale 0.01 0.01 0.01
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_sophia.dae"
+      ]
+    }
+  ]
+}
+Transform {
+  translation -28.04 13.73 0
+  rotation 0 0 1 3.14159
+  scale 0.01 0.01 0.01
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_martha.dae"
+      ]
+    }
+  ]
+}
+Transform {
+  translation 43.4544 41.8396 0
+  rotation 0 0 1 2.87979
+  scale 0.01 0.01 0.01
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_elizabeth.dae"
+      ]
+    }
+  ]
+}
+Transform {
+  translation 10.96 -14.06 0
+  scale 0.01 0.01 0.01
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_leonard.dae"
+      ]
+    }
+  ]
+}
+Transform {
+  translation -18.0895 -42.2905 -0.000418452
+  rotation 6.38314999984765e-06 -2.6439899999368945e-06 0.9999999999761324 0.785399
+  scale 0.01 0.01 0.01
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_david.dae"
+      ]
+    }
+  ]
+}
+Transform {
+  translation -12 32.55 0.22
+  rotation 0.9999999999944944 2.3464099999870814e-06 -2.3464099999870814e-06 -1.5707953071795862
+  scale 0.01 0.01 0.01
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_brian.dae"
+      ]
+    }
+  ]
+}
+Transform {
+  translation 18.9 35.7043 -0.625038
+  rotation -0.0751459710639598 -0.1301569498811888 -0.9886416193092825 2.10425
+  scale 0.01 0.01 0.01
+  children [
+    CadShape {
+      url [
+        "../models/mixamo_human/models_dae/model_brian.dae"
+      ]
+    }
+  ]
+}
+ToyotaPrius {
+  translation -6.66 33.01 0.4
+  rotation 0 0 1 -5.307179586466759e-06
+  color 0.1 0.3 0.3
+}
+ToyotaPrius {
+  translation 2.09 33.01 0.5
+  rotation 0 0 1 -5.307179586466759e-06
+  color 0.1 0.15 0.5
+  name "vehicle(2)"
+}
+ToyotaPrius {
+  translation 15.125 35.5122 0.6
+  rotation 0 0 1 1.04719
+  color 0.1 0.5 0.18
+  name "vehicle(3)"
+}
+ToyotaPrius {
+  translation 17.1923 33.0293 0.7
+  rotation 0 0 1 1.57079
+  color 1 0.15 0.18
+  name "vehicle(4)"
+}
+ToyotaPrius {
+  translation -18.65 33.49 0.5
+  rotation 0 0 1 -5.307179586466759e-06
+  name "vehicle(1)"
+}
+BigSassafras {
+  translation 20.61 25.17 0
+}
+BigSassafras {
+  translation 20.61 30.71 0
+  name "sassafras tree(25)"
+}
+BigSassafras {
+  translation 20.61 35.32 0
+  name "sassafras tree(26)"
+}
+BigSassafras {
+  translation 20.61 39.9 0
+  name "sassafras tree(27)"
+}
+BigSassafras {
+  translation 20.61 44.62 0
+  name "sassafras tree(28)"
+}
+BigSassafras {
+  translation 20.61 49.15 0
+  name "sassafras tree(29)"
+}
+BigSassafras {
+  translation 6.95 27.75 0
+  name "sassafras tree(24)"
+}
+BigSassafras {
+  translation 6.95 41.87 0
+  name "sassafras tree(30)"
+}
+BigSassafras {
+  translation 6.95 47.11 0
+  name "sassafras tree(31)"
+}
+BigSassafras {
+  translation 6.95 21.71 0
+  name "sassafras tree(1)"
+}
+BigSassafras {
+  translation 21.09 18.51 0
+  name "sassafras tree(2)"
+}
+BigSassafras {
+  translation 6.95 15.58 0
+  name "sassafras tree(3)"
+}
+BigSassafras {
+  translation 21.13 12.62 0
+  name "sassafras tree(4)"
+}
+BigSassafras {
+  translation 6.95 9.83 0
+  name "sassafras tree(5)"
+}
+BigSassafras {
+  translation 21.26 6.4 0
+  name "sassafras tree(6)"
+}
+BigSassafras {
+  translation 6.95 3.13 0
+  name "sassafras tree(7)"
+}
+BigSassafras {
+  translation 21.29 0.12 0
+  name "sassafras tree(8)"
+}
+BigSassafras {
+  translation 6.95 -2.82 0
+  name "sassafras tree(9)"
+}
+BigSassafras {
+  translation 21.22 -5.69 0
+  name "sassafras tree(10)"
+}
+BigSassafras {
+  translation 6.95 -8.58 0
+  name "sassafras tree(11)"
+}
+BigSassafras {
+  translation 21.07 -11.25 0
+  name "sassafras tree(12)"
+}
+BigSassafras {
+  translation 6.95 -14.9 0
+  name "sassafras tree(13)"
+}
+BigSassafras {
+  translation 20.87 -18.22 0
+  name "sassafras tree(14)"
+}
+BigSassafras {
+  translation 6.95 -21.78 0
+  name "sassafras tree(15)"
+}
+BigSassafras {
+  translation 20.57 -25.38 0
+  name "sassafras tree(16)"
+}
+BigSassafras {
+  translation 6.95 -28.58 0
+  name "sassafras tree(17)"
+}
+BigSassafras {
+  translation 20.73 -31.73 0
+  name "sassafras tree(18)"
+}
+BigSassafras {
+  translation 6.95 -35.42 0
+  name "sassafras tree(19)"
+}
+BigSassafras {
+  translation 20.86 -38.79 0
+  name "sassafras tree(20)"
+}
+BigSassafras {
+  translation 6.95 -42.25 0
+  name "sassafras tree(21)"
+}
+BigSassafras {
+  translation 21.09 -45.81 0
+  name "sassafras tree(22)"
+}
+BigSassafras {
+  translation 6.95 -48.75 0
+  name "sassafras tree(23)"
+}
+Auditorium {
+  translation -30 -28 0
+  rotation 0 0 1 1.5708
 }

@@ -1,7 +1,3 @@
-# Copyright 1996-2024 Cyberbotics Ltd.
-# Licensed under the Apache License, Version 2.0
-# See the License for details: https://www.apache.org/licenses/LICENSE-2.0
-
 from controller import Robot, Motor, InertialUnit, GPS, Gyro
 import math
 import socket
@@ -83,7 +79,6 @@ class Mavic(Robot):
         #self.client = self.setup_client_connection(name=self.name)
 
         self.camera = self.getDevice("camera")
-        self.camera.setFov(0.7854)
         self.camera.enable(self.time_step)
         self.camera_pitch_sensor = self.getDevice("camera pitch sensor")
         self.camera_pitch_sensor.enable(self.time_step)
@@ -167,17 +162,20 @@ class Mavic(Robot):
             if verbose_target:
                 print("First target: ", self.target_position[0:2])
 
+        # if self.waypoints[self.target_index]['end']:
+        #         self.end_of_search = True
+        #         self.waypoints = [{'x': 0, 'y':0, 'end': True}]
+
         # if the robot is at the position with a precision of target_precision
         if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
             self.target_index += 1
-
-            if self.waypoints[self.target_index]['end']:
+            
+            if self.target_index >= len(self.waypoints) - 1:
+                # self.target_index = 0
                 self.end_of_search = True
-                self.waypoints = [{'x': 0, 'y':0}]
-
-            if self.target_index > len(self.waypoints) - 1 and not self.end_of_search:
-                self.target_index = 0
-            else:
+                self.waypoints = [{'x': 0, 'y':0, 'end': True}]
+            elif not self.end_of_search:
+                print(f'{self.target_index} {self.waypoints[self.target_index]}')
                 self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
             if verbose_target:
                 print("Target reached! New target: ",
@@ -233,27 +231,6 @@ class Mavic(Robot):
         )
 
         return completion.choices[0].message["content"]
-    
-    # def extract_json_from_text(self, text):
-    #     """
-    #     Extracts and returns a valid JSON object (as a dict) from a string containing additional content.
-    #     """
-
-    #     # print(text)
-    #     try:
-    #         # Use regex to find a JSON-like block in the text
-    #         match = re.search(r'\{[\s\S]*\}', text)
-    #         if match:
-    #             json_str = match.group(0)
-    #             # Convert to dict
-    #             return json.loads(json_str)
-    #         else:
-    #             raise ValueError("No JSON object found in the text.")
-    #     except json.JSONDecodeError as e:
-    #         print("Invalid JSON format:", e)
-    #     except Exception as e:
-    #         print("Error:", e)
-    #     return {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
 
     def far_from_other_detections(self, new_detection, detections):
         if len(detections) == 0:
@@ -330,20 +307,24 @@ class Mavic(Robot):
 
 
         world_point = origin + t * world_ray
-        # print(f'World Ray: {world_ray}')
-        # print(f't: {t}')
-        # print(f'Ground intersection: {world_point}')
-        # print("Drone pitch:", np.degrees(drone_pitch))
-        # print("Gimbal pitch sensor (degrees):", np.degrees(gimbal_pitch))
-        # print("Total camera pitch (degrees):", np.degrees(drone_pitch + gimbal_pitch))
-        # print("Pixel:", pixel_coord)
-        # print("Cam ray:", cam_ray)
-        # print("Drone pos:", (x_drone, y_drone, z_drone))
-        # print("World ray:", world_ray)
-        # print("Intersection:", world_point[:2])
-        # print("Roll, Pitch, Yaw (degrees):", np.degrees(drone_roll), np.degrees(drone_pitch), np.degrees(drone_yaw))
-        # print("Gimbal pitch (degrees):", np.degrees(gimbal_pitch))
         return world_point[:2]  # Return (x, y) only
+    
+    def rotate_point_back(self, x, y, angle, w, h):
+        cx, cy = w / 2, h / 2  # image center
+
+        # shift to origin
+        x_shifted = x - cx
+        y_shifted = y - cy
+
+        # if image was rotated CW by angle_cw, rotate CCW by angle_cw to undo
+        theta = math.radians(angle)  # positive = CCW correction
+        cos_t, sin_t = math.cos(theta), math.sin(theta)
+
+        x_new = x_shifted * cos_t - y_shifted * sin_t
+        y_new = x_shifted * sin_t + y_shifted * cos_t
+
+        # shift back
+        return x_new + cx, y_new + cy
 
     def run(self):
         print(f'Starting up {self.getName()}')
@@ -366,6 +347,8 @@ class Mavic(Robot):
         detections_folder = '../../results/detections'
         if not os.path.exists(detections_folder):
             os.makedirs(detections_folder)
+
+        start_up_complete = False
 
         while self.step(self.time_step) != -1:
             # current_time = self.getTime()
@@ -395,107 +378,170 @@ class Mavic(Robot):
             rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
             pil_image = Image.fromarray(rgb_image)
         
+            yolo_image_rotations = [bgr_image
+                                    , cv2.rotate(bgr_image, cv2.ROTATE_90_CLOCKWISE)
+                                    , cv2.rotate(bgr_image, cv2.ROTATE_180)
+                                    , cv2.rotate(bgr_image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
+            max_conf = 0
+            best_result = None
+            best_yolo_image = None
+            image_rotate_angle = None
+                
+            if not start_up_complete and altitude >= self.target_altitude:
+                start_up_complete = True
 
             # Run YOLOv8 to find people
-            results = yolo_model(bgr_image, verbose=False)[0]
+            # rotate image to thoroughly look through people
+            if start_up_complete:
+                for i in range(len(yolo_image_rotations)):
+                    results = yolo_model(yolo_image_rotations[i], verbose=False)[0]
+                    
+                    for box in results.boxes:
+                        cls = int(box.cls[0])
+                        conf = float(box.conf[0])
+                        if cls == 0 and conf > max_conf and conf > 0.8:
+                            best_result = box
+                            best_yolo_image = yolo_image_rotations[i]
+                            max_conf = conf
+
+                            if i == 0:
+                                image_rotate_angle = 0
+                            elif i == 1:
+                                image_rotate_angle = -90
+                            elif i == 2:
+                                image_rotate_angle = 180
+                            elif i == 3:
+                                image_rotate_angle = 90
+
             person_detected = False
 
-            for result in results.boxes.data:
-                x1, y1, x2, y2, conf, cls = result.tolist()
-                bounding_box_height = y2-y1
+            if best_result is not None:
+                x1, y1, x2, y2 = best_result.xyxy[0].tolist()
+                conf = float(best_result.conf[0])
+                cls = int(best_result.cls[0])
 
-                if int(cls) == 0: # If person is detected to a 90% confidence
-                    if altitude < self.target_altitude:
-                        continue
-                    # print(conf)
-                    elif round(conf, 2) > 0.40:
-                        # if the new conf is better than the currently best conf, set best_conf to new conf
-                        if round(conf, 2) > round(best_conf, 2):
-                            best_conf = conf
-                        # else, there isn't a better conf and set person_detected is True
-                        else:
-                            person_detected = True
-                            # est_x, est_y = self.estimate_person_location(telemetry_data)
-                            cv2.rectangle(bgr_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                            cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
-                            telemetry_data['conf'] = best_conf
-                            best_conf = 0
-                            person_x = x1
-                            person_y = y1
+                person_detected = True
+                telemetry_data['conf'] = conf
 
-                            est_loc = self.estimate_location((person_x, person_y))
-                            est_x = int(est_loc[0])
-                            est_y = int(est_loc[1])
+                x1, y1 = self.rotate_point_back(x=x1, y=y1, angle=image_rotate_angle, w=bgr_image.shape[1], h=bgr_image.shape[0])
+                x2, y2 = self.rotate_point_back(x=x2, y=y2, angle=image_rotate_angle, w=bgr_image.shape[1], h=bgr_image.shape[0])
 
-            if person_detected and (est_x, est_y) not in detections and self.far_from_other_detections(new_detection=(est_x, est_y), detections=detections):
-                # print(f'Person Detected. {int(x_pos)},{int(y_pos)}')
-                #print("YOLO has detected a person. Running Florence-2 to get image description")
-                prompt = "Describe the image"
-                inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
-                output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
-                vlm_description = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
+                x1, x2 = int(min(x1, x2)), int(max(x1, x2))
+                y1, y2 = int(min(y1, y2)), int(max(y1, y2))
 
-                yolo_detection = f'{detection_id}_yolo_detection.jpg'
-                yolo_detection_path = os.path.join(detections_folder, yolo_detection)
+                est_loc = self.estimate_location((x1, y1))
+                est_x = int(est_loc[0])
+                est_y = int(est_loc[1])
 
-                cv2.imwrite(yolo_detection_path, bgr_image)
-                #print("Person confirmed. Florence-2 Output:", generated_text)
-                # response = {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
-                try:
-                    # LLM Processing
-                    LLM_response = self.is_emergency(vlm_description)
-                    # response = self.extract_json_from_text(LLM_response)
-                    #insert into client response
-                    telemetry_data['vlm_description'] = vlm_description
-                    telemetry_data['person_found'] = True if '1. Person Found' in LLM_response else False
-                    telemetry_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
-                    telemetry_data['assistance_instructions'] = LLM_response
-                except HfHubHTTPError as e:
-                    if "402 Client Error" in str(e):
-                        print('Max calls for free trier credits.')
 
-                        LLM_response = 'Max calls for free trier credits.'
-                        telemetry_data['vlm_description'] = vlm_description
-                        telemetry_data['person_found'] = True
-                        telemetry_data['requires_assistance'] = 'N/A'
-                        telemetry_data['assistance_instructions'] = LLM_response
-                        telemetry_data['detection_id'] = detection_id
-                    else:
-                        raise
+                # for result in best_results.boxes.data:
+                #     x1, y1, x2, y2, conf, cls = result.tolist()
+                #     bounding_box_height = y2-y1
 
-                if telemetry_data['person_found']:
-                    cv2.putText(bgr_image, f"Person found...", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
+                #     if int(cls) == 0 and conf > 0.40: # If person is detected to a set confidence (40%)
+                #         person_detected = True
+                #         # est_x, est_y = self.estimate_person_location(telemetry_data)
+                #         cv2.rectangle(best_yolo_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                #         cv2.putText(best_yolo_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                #         telemetry_data['conf'] = conf
+                #         person_x = x1
+                #         person_y = y1
 
-                    telemetry_data['est_x'] = int(est_loc[0])
-                    telemetry_data['est_y'] = int(est_loc[1])
+                #         est_loc = self.estimate_location((person_x, person_y))
+                #         est_x = int(est_loc[0])
+                #         est_y = int(est_loc[1])
 
-                    detections.append((int(est_loc[0]), int(est_loc[1])))
+                if person_detected and self.far_from_other_detections(new_detection=(est_x, est_y), detections=detections) and (est_x, est_y) not in detections:
+                    cv2.rectangle(bgr_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                    
+                    # print(f'Person Detected. {int(x_pos)},{int(y_pos)}')
+                    #print("YOLO has detected a person. Running Florence-2 to get image description")
+                    prompt = "Describe the image"
+                    inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
+                    output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
+                    vlm_description = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
                     detection_id += 1
 
-                    telemetry_data['detection_id'] = detection_id
+                    yolo_detection = f'{detection_id}_yolo_detection.jpg'
+                    yolo_detection_path = os.path.join(detections_folder, yolo_detection)
 
-
-                    # Encrypt and send telemetry data for mapping
-                    telemetry_json = json.dumps(telemetry_data)
-                    encrypted_telemetry = cipher.encrypt(telemetry_json.encode('utf-8'))
+                    cv2.imwrite(yolo_detection_path, bgr_image)
+                    #print("Person confirmed. Florence-2 Output:", generated_text)
+                    # response = {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
                     try:
-                        client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
-                        client.sendall(encrypted_telemetry)
-                    except BrokenPipeError:
-                        print("⚠️ Connection lost while sending data. Skipping send.")
-                        break  # Exit the run() loop if server is gone
+                        # LLM Processing
+                        LLM_response = self.is_emergency(vlm_description)
+                        # response = self.extract_json_from_text(LLM_response)
+                        #insert into client response
+                        telemetry_data['vlm_description'] = vlm_description
+                        telemetry_data['person_found'] = True if '1. Person Found' in LLM_response else False
+                        telemetry_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
+                        telemetry_data['assistance_instructions'] = LLM_response
+                    except HfHubHTTPError as e:
+                        if "402 Client Error" in str(e):
+                            print('Max calls for free trier credits.')
 
-                best_conf = 0.0
-            
-            if self.target_position == [0,0] and x_pos > -0.5 and x_pos < 0.5 and y_pos > -0.5 and y_pos < 0.5 and self.end_of_search:
-                self.target_altitude = 0
+                            LLM_response = 'Max calls for free trier credits.'
+                            telemetry_data['vlm_description'] = vlm_description
+                            telemetry_data['person_found'] = True
+                            telemetry_data['requires_assistance'] = 'N/A'
+                            telemetry_data['assistance_instructions'] = LLM_response
+                            telemetry_data['detection_id'] = detection_id
+                        else:
+                            raise
 
-            if self.target_altitude < 0.25 and self.end_of_search:
-                self.front_left_motor.setVelocity(0)
-                self.front_right_motor.setVelocity(0)
-                self.rear_left_motor.setVelocity(0)
-                self.rear_right_motor.setVelocity(0)
+                    if telemetry_data['person_found']:
+                        cv2.putText(bgr_image, f"Person found...", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
+
+                        telemetry_data['est_x'] = int(est_loc[0])
+                        telemetry_data['est_y'] = int(est_loc[1])
+
+                        detections.append((int(est_loc[0]), int(est_loc[1])))
+
+                        telemetry_data['detection_id'] = detection_id
+
+
+                        # Encrypt and send telemetry data for mapping
+                        telemetry_json = json.dumps(telemetry_data)
+                        encrypted_telemetry = cipher.encrypt(telemetry_json.encode('utf-8'))
+                        try:
+                            client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
+                            client.sendall(encrypted_telemetry)
+                        except BrokenPipeError:
+                            print("⚠️ Connection lost while sending data. Skipping send.")
+                            break  # Exit the run() loop if server is gone
+
+                    best_conf = 0.0
+                
+            if self.target_index >= len(self.waypoints) and not self.end_of_search:
+                # All waypoints done → start return-to-home
+                self.end_of_search = True
+                self.target_position[0:2] = [0, 0]
+                self.target_altitude = 20
+                print("[Mission] All waypoints complete. Returning to (0,0).")
+
+            if self.end_of_search:
+                if abs(x_pos) < 0.5 and abs(y_pos) < 0.5:
+                    self.target_altitude = 0
+
+                if self.target_altitude < 0.25:
+                    self.front_left_motor.setVelocity(0)
+                    self.front_right_motor.setVelocity(0)
+                    self.rear_left_motor.setVelocity(0)
+                    self.rear_right_motor.setVelocity(0)
+
+                    print('Survey Completed. Sending Completion Signal')
+
+                    try:
+                        msg = cipher.encrypt(b"MISSION_COMPLETE")
+                        client.sendall(len(msg).to_bytes(8, byteorder='big'))
+                        client.sendall(msg)
+                    except:
+                        print("⚠️ Could not notify server of completion.")
+
+                    break  # Exit run loop
 
             if altitude > self.target_altitude - 1:
                 if self.getTime() - t1 > 0.1:
@@ -513,6 +559,17 @@ class Mavic(Robot):
             self.rear_left_motor.setVelocity(- (self.K_VERTICAL_THRUST + vertical_input + yaw_input - pitch_input - roll_input))
             self.rear_right_motor.setVelocity(self.K_VERTICAL_THRUST + vertical_input - yaw_input - pitch_input + roll_input)
         
+            if self.end_of_search and self.target_altitude < 0.25:
+                print("[Mission] Drone has landed at home position.")
+                try:
+                    final_msg = cipher.encrypt(b"MISSION_COMPLETE")
+                    client.sendall(len(final_msg).to_bytes(8, byteorder='big'))
+                    client.sendall(final_msg)
+                except:
+                    print("⚠️ Could not notify server of completion.")
+                break  # Exit run loop
+
+
         # After loop:
         try:
             client.sendall(len(cipher.encrypt(b"BYE")).to_bytes(8, byteorder='big'))
