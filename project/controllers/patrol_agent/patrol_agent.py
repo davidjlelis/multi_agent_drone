@@ -308,26 +308,6 @@ class Mavic(Robot):
 
         world_point = origin + t * world_ray
         return world_point[:2]  # Return (x, y) only
-    
-    def rotate_point_back(self, x, y, angle, w, h):
-        print(f'translating {x}, {y} by {angle} degrees. Image width: {w}, height: {h}')
-        angle_rad = math.radians(angle)
-
-        cx = w // 2
-        cy = h // 2
-
-        temp_x = x - cx
-        temp_y = y - cy
-
-        rotated_x = temp_x * math.cos(angle_rad) - temp_y * math.sin(angle_rad)
-        rotated_y = temp_y * math.sin(angle_rad ) + temp_y * math.cos(angle_rad)
-
-        new_x = rotated_x + cx
-        new_y = rotated_y + cy
-
-        print(f'new coordinates: {new_x}, {new_y}')
-
-        return int(new_x), int(new_y)
 
     def run(self):
         print(f'Starting up {self.getName()}')
@@ -452,12 +432,6 @@ class Mavic(Robot):
                     cx = (x-w) // 2
                     cy = (y-h) // 2
 
-                    # rotated_x1, rotated_y1 = self.rotate_point_back(x=x1, y=y1, angle=image_rotate_angle, w=bgr_image.shape[1], h=bgr_image.shape[0])
-                    # rotated_x2, rotated_y2 = self.rotate_point_back(x=x2, y=y2, angle=image_rotate_angle, w=width, h=height)
-
-                    # x1, x2 = int(min(x1, x2)), int(max(x1, x2))
-                    # y1, y2 = int(min(y1, y2)), int(max(y1, y2))
-            
 
                     # est_loc = self.estimate_location((rotated_x1, rotated_y1))
                     est_loc = self.estimate_location((cx, cy))

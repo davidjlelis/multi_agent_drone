@@ -15,5 +15,22 @@
         "assistance_instructions": "1. Person Found\n\n2. Person Requires Assistance\n\n3. Assistance needed: Medical evaluation and possible treatment for injuries sustained from the fall. Ensure that the individual is moved carefully to avoid aggravating any potential injuries.",
         "world_name": "test_world_1",
         "detection_id": 1
+    },
+    {
+        "x_d": -32,
+        "y_d": -46,
+        "altitude": 19.99466381704393,
+        "est_x": -16,
+        "est_y": -40,
+        "roll": 0.0012818334131948783,
+        "pitch": 0.022194694437118728,
+        "yaw": 0.3193093086225836,
+        "conf": 0.8128006458282471,
+        "person_found": true,
+        "vlm_description": "A man laying on the ground next to a red car.",
+        "requires_assistance": true,
+        "assistance_instructions": "1. Person Found\n\n2. Person Requires Assistance\n\n3. Assistance needed: Medical evaluation and possible treatment. The man is laying on the ground, which could indicate an injury or a medical emergency. First responders should check for any signs of distress, assess consciousness, and look for visible injuries. If necessary, they should provide immediate medical care and transport him to a hospital.",
+        "world_name": "test_world_1",
+        "detection_id": 6
     }
 ]
