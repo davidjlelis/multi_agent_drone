@@ -310,21 +310,24 @@ class Mavic(Robot):
         return world_point[:2]  # Return (x, y) only
     
     def rotate_point_back(self, x, y, angle, w, h):
-        cx, cy = w / 2, h / 2  # image center
+        print(f'translating {x}, {y} by {angle} degrees. Image width: {w}, height: {h}')
+        angle_rad = math.radians(angle)
 
-        # shift to origin
-        x_shifted = x - cx
-        y_shifted = y - cy
+        cx = w // 2
+        cy = h // 2
 
-        # if image was rotated CW by angle_cw, rotate CCW by angle_cw to undo
-        theta = math.radians(angle)  # positive = CCW correction
-        cos_t, sin_t = math.cos(theta), math.sin(theta)
+        temp_x = x - cx
+        temp_y = y - cy
 
-        x_new = x_shifted * cos_t - y_shifted * sin_t
-        y_new = x_shifted * sin_t + y_shifted * cos_t
+        rotated_x = temp_x * math.cos(angle_rad) - temp_y * math.sin(angle_rad)
+        rotated_y = temp_y * math.sin(angle_rad ) + temp_y * math.cos(angle_rad)
 
-        # shift back
-        return x_new + cx, y_new + cy
+        new_x = rotated_x + cx
+        new_y = rotated_y + cy
+
+        print(f'new coordinates: {new_x}, {new_y}')
+
+        return int(new_x), int(new_y)
 
     def run(self):
         print(f'Starting up {self.getName()}')
@@ -350,7 +353,16 @@ class Mavic(Robot):
 
         start_up_complete = False
 
+        height = self.camera.getHeight()
+        width = self.camera.getWidth()
+
         while self.step(self.time_step) != -1:
+            max_conf = 0
+            best_result = None
+            best_yolo_image = None
+            image_rotate_angle = None
+            person_detected = False
+                
             # current_time = self.getTime()
 
             roll, pitch, yaw = self.imu.getRollPitchYaw()
@@ -367,9 +379,6 @@ class Mavic(Robot):
                 "world_name": self.world_name, "detection_id": False
             }
 
-            height = self.camera.getHeight()
-            width = self.camera.getWidth()
-
             # print(f'Height: {height}, Width: {width}')
 
             raw_image = self.camera.getImage()
@@ -382,11 +391,7 @@ class Mavic(Robot):
                                     , cv2.rotate(bgr_image, cv2.ROTATE_90_CLOCKWISE)
                                     , cv2.rotate(bgr_image, cv2.ROTATE_180)
                                     , cv2.rotate(bgr_image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
-            max_conf = 0
-            best_result = None
-            best_yolo_image = None
-            image_rotate_angle = None
-                
+
             if not start_up_complete and altitude >= self.target_altitude:
                 start_up_complete = True
 
@@ -413,50 +418,79 @@ class Mavic(Robot):
                             elif i == 3:
                                 image_rotate_angle = 90
 
-            person_detected = False
-
             if best_result is not None:
                 x1, y1, x2, y2 = best_result.xyxy[0].tolist()
                 conf = float(best_result.conf[0])
                 cls = int(best_result.cls[0])
+                if cls == 0:
+                    person_detected = True
+                    telemetry_data['conf'] = conf
 
-                person_detected = True
-                telemetry_data['conf'] = conf
+                    # set rotated image
+                    cv2.rectangle(best_yolo_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    cv2.putText(best_yolo_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
 
-                x1, y1 = self.rotate_point_back(x=x1, y=y1, angle=image_rotate_angle, w=bgr_image.shape[1], h=bgr_image.shape[0])
-                x2, y2 = self.rotate_point_back(x=x2, y=y2, angle=image_rotate_angle, w=bgr_image.shape[1], h=bgr_image.shape[0])
+                    if image_rotate_angle == 0:
+                        pass
+                    elif image_rotate_angle == 90:
+                        best_yolo_image = cv2.rotate(best_yolo_image, cv2.ROTATE_90_CLOCKWISE)
+                    elif image_rotate_angle == 180:
+                        best_yolo_image = cv2.rotate(best_yolo_image, cv2.ROTATE_180)
+                    elif image_rotate_angle == -90:
+                        best_yolo_image = cv2.rotate(best_yolo_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-                x1, x2 = int(min(x1, x2)), int(max(x1, x2))
-                y1, y2 = int(min(y1, y2)), int(max(y1, y2))
+                    gray = cv2.cvtColor(best_yolo_image, cv2.COLOR_BGR2GRAY)
 
-                est_loc = self.estimate_location((x1, y1))
-                est_x = int(est_loc[0])
-                est_y = int(est_loc[1])
+                    _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+                    contours, hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                    contour = contours[0]
+
+                    x, y, w, h = cv2.boundingRect(contour)
+
+                    cx = (x-w) // 2
+                    cy = (y-h) // 2
+
+                    # rotated_x1, rotated_y1 = self.rotate_point_back(x=x1, y=y1, angle=image_rotate_angle, w=bgr_image.shape[1], h=bgr_image.shape[0])
+                    # rotated_x2, rotated_y2 = self.rotate_point_back(x=x2, y=y2, angle=image_rotate_angle, w=width, h=height)
+
+                    # x1, x2 = int(min(x1, x2)), int(max(x1, x2))
+                    # y1, y2 = int(min(y1, y2)), int(max(y1, y2))
+            
+
+                    # est_loc = self.estimate_location((rotated_x1, rotated_y1))
+                    est_loc = self.estimate_location((cx, cy))
+                    est_x = int(est_loc[0])
+                    est_y = int(est_loc[1])
 
 
-                # for result in best_results.boxes.data:
-                #     x1, y1, x2, y2, conf, cls = result.tolist()
-                #     bounding_box_height = y2-y1
+                    # for result in best_results.boxes.data:
+                    #     x1, y1, x2, y2, conf, cls = result.tolist()
+                    #     bounding_box_height = y2-y1
 
-                #     if int(cls) == 0 and conf > 0.40: # If person is detected to a set confidence (40%)
-                #         person_detected = True
-                #         # est_x, est_y = self.estimate_person_location(telemetry_data)
-                #         cv2.rectangle(best_yolo_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                #         cv2.putText(best_yolo_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
-                #         telemetry_data['conf'] = conf
-                #         person_x = x1
-                #         person_y = y1
+                    #     if int(cls) == 0 and conf > 0.40: # If person is detected to a set confidence (40%)
+                    #         person_detected = True
+                    #         # est_x, est_y = self.estimate_person_location(telemetry_data)
+                    #         cv2.rectangle(best_yolo_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    #         cv2.putText(best_yolo_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                    #         telemetry_data['conf'] = conf
+                    #         person_x = x1
+                    #         person_y = y1
 
-                #         est_loc = self.estimate_location((person_x, person_y))
-                #         est_x = int(est_loc[0])
-                #         est_y = int(est_loc[1])
+                    #         est_loc = self.estimate_location((person_x, person_y))
+                    #         est_x = int(est_loc[0])
+                    #         est_y = int(est_loc[1])
 
                 if person_detected and self.far_from_other_detections(new_detection=(est_x, est_y), detections=detections) and (est_x, est_y) not in detections:
-                    cv2.rectangle(bgr_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                    cv2.putText(bgr_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                    # set OG image
+                    # cv2.rectangle(bgr_image, (int(rotated_x1), int(rotated_y1)), (int(rotated_x2), int(rotated_y2)), (0, 255, 0), 2)
+                    # cv2.putText(bgr_image, f"Person {conf:.2f}", (int(rotated_x1), int(rotated_y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+
                     
-                    # print(f'Person Detected. {int(x_pos)},{int(y_pos)}')
-                    #print("YOLO has detected a person. Running Florence-2 to get image description")
+                    
+                    # print(f'Person Detected. {int(x_pos)},{int(y_pos)}')ƒ
+                   #print("YOLO has detected a person. Running Florence-2 to get image description")
                     prompt = "Describe the image"
                     inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
                     output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
@@ -466,7 +500,7 @@ class Mavic(Robot):
                     yolo_detection = f'{detection_id}_yolo_detection.jpg'
                     yolo_detection_path = os.path.join(detections_folder, yolo_detection)
 
-                    cv2.imwrite(yolo_detection_path, bgr_image)
+                    # cv2.imwrite(yolo_detection_path, bgr_image)
                     #print("Person confirmed. Florence-2 Output:", generated_text)
                     # response = {'person_found': False, 'requires_assistance': False, 'assistance_instructions': False}
                     try:
@@ -492,6 +526,7 @@ class Mavic(Robot):
                             raise
 
                     if telemetry_data['person_found']:
+                        cv2.imwrite(yolo_detection_path, best_yolo_image)
                         cv2.putText(bgr_image, f"Person found...", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
 
