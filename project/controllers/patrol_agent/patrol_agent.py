@@ -238,7 +238,7 @@ class Mavic(Robot):
 
         for detection in detections:
             distance = math.sqrt((detection[0]-new_detection[0])**2+(detection[1]-new_detection[1])**2)
-            if distance < 15:
+            if distance < 10:
                 return False
             
         return True
@@ -464,12 +464,14 @@ class Mavic(Robot):
                     
                     
                     # print(f'Person Detected. {int(x_pos)},{int(y_pos)}')ƒ
-                   #print("YOLO has detected a person. Running Florence-2 to get image description")
+                    # print("YOLO has detected a person. Running Florence-2 to get image description")
                     prompt = "Describe the image"
                     inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
                     output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
                     vlm_description = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
                     detection_id += 1
+
+                    # print(f'VLM description: {vlm_description}')
 
                     yolo_detection = f'{detection_id}_yolo_detection.jpg'
                     yolo_detection_path = os.path.join(detections_folder, yolo_detection)
@@ -480,6 +482,7 @@ class Mavic(Robot):
                     try:
                         # LLM Processing
                         LLM_response = self.is_emergency(vlm_description)
+                        # print(f'LLM Response: {LLM_response}')
                         # response = self.extract_json_from_text(LLM_response)
                         #insert into client response
                         telemetry_data['vlm_description'] = vlm_description
@@ -499,7 +502,7 @@ class Mavic(Robot):
                         else:
                             raise
 
-                    if telemetry_data['person_found']:
+                    if telemetry_data['person_found'] or person_detected:
                         cv2.imwrite(yolo_detection_path, best_yolo_image)
                         cv2.putText(bgr_image, f"Person found...", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
@@ -518,6 +521,7 @@ class Mavic(Robot):
                         try:
                             client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
                             client.sendall(encrypted_telemetry)
+                            # print(f'Data sent to server: {telemetry_json}')
                         except BrokenPipeError:
                             print("⚠️ Connection lost while sending data. Skipping send.")
                             break  # Exit the run() loop if server is gone
