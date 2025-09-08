@@ -68,7 +68,7 @@ class Mavic(Robot):
     K_PITCH_P = 30.0
     MAX_YAW_DISTURBANCE = 0.4
     MAX_PITCH_DISTURBANCE = -1
-    target_precision = 1
+    target_precision = 2
 
     def __init__(self):
         super().__init__()
@@ -94,7 +94,7 @@ class Mavic(Robot):
         self.rear_left_motor = self.getDevice("rear left propeller")
         self.rear_right_motor = self.getDevice("rear right propeller")
         self.camera_pitch_motor = self.getDevice("camera pitch")
-        self.camera_pitch_motor.setPosition(0.7)        
+        self.camera_pitch_motor.setPosition(1.7)        
         self.camera_yaw_motor = self.getDevice("camera yaw")
         self.camera_yaw_motor.setPosition(0.0)
         self.camera_roll_motor = self.getDevice("camera roll")
@@ -108,7 +108,7 @@ class Mavic(Robot):
         self.current_pose = 6 * [0]
         self.target_position = [0, 0, 0]
         self.target_index = 0
-        self.target_altitude = 20
+        self.target_altitude = 10
         self.end_of_search = False
 
         # Connect to server to get waypoints
@@ -120,6 +120,8 @@ class Mavic(Robot):
         self.waypoints = self.world_details['waypoints']
         self.world_description = self.world_details['world_description']
         self.world_name = self.world_details['world_name']
+        self.goal_position = self.world_details['goal_position']
+        self.message = self.world_details['message']
         print(f"Recieved {len(self.waypoints)} from waypoints from server")
 
     def get_world_details_from_server(self):
@@ -156,69 +158,122 @@ class Mavic(Robot):
     def set_position(self, pos):
         self.current_pose = [float(p) for p in pos]  # Ensure all positions are floats
 
-    def move_to_target(self, verbose_movement=False, verbose_target=False):
-        if self.target_position[0:2] == [0, 0]:  # Initialization
-            self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0]
-            if verbose_target:
-                print("First target: ", self.target_position[0:2])
+    def move_to_target(self, waypoints, verbose_movement=True, verbose_target=True):
+            if self.target_position[0:2] == [0, 0]:  # Initialization
+                self.target_position[0:2] = waypoints[0]
+                if verbose_target:
+                    print("First target: ", self.target_position[0:2])
 
-        # if self.waypoints[self.target_index]['end']:
-        #         self.end_of_search = True
-        #         self.waypoints = [{'x': 0, 'y':0, 'end': True}]
+            # if the robot is at the position with a precision of target_precision
+            if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
 
-        # if the robot is at the position with a precision of target_precision
-        if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
-            self.target_index += 1
+                self.target_index += 1
+                if self.target_index > len(waypoints) - 1:
+                    self.target_index = 0
+                self.target_position[0:2] = waypoints[self.target_index]
+                if verbose_target:
+                    print("Target reached! New target: ",
+                        self.target_position[0:2])
+
+            # This will be in ]-pi;pi]
+            self.target_position[2] = np.arctan2(
+                self.target_position[1] - self.current_pose[1], self.target_position[0] - self.current_pose[0])
+            # This is now in ]-2pi;2pi[
+            angle_left = self.target_position[2] - self.current_pose[5]
+            # Normalize turn angle to ]-pi;pi]
+            angle_left = (angle_left + 2 * np.pi) % (2 * np.pi)
+            if (angle_left > np.pi):
+                angle_left -= 2 * np.pi
+
+            # Turn the robot to the left or to the right according the value and the sign of angle_left
+            yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
+            # non proportional and decreasing function
+            pitch_disturbance = clamp(
+                np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
+
+            if verbose_movement:
+                distance_left = np.sqrt(((self.target_position[0] - self.current_pose[0]) ** 2) + (
+                    (self.target_position[1] - self.current_pose[1]) ** 2))
+                print("remaning angle: {:.4f}, remaning distance: {:.4f}".format(
+                    angle_left, distance_left))
+            return yaw_disturbance, pitch_disturbance
+
+    # def move_to_target(self, verbose_movement=False, verbose_target=False):
+    #     if self.target_position[0:2] == [0, 0]:  # Initialization
+    #         self.target_position[0:2] = [self.waypoints[0]['x'], self.waypoints[0]['y'], 0]
+    #         if verbose_target:
+    #             print("First target: ", self.target_position[0:2])
+
+    #     # if self.waypoints[self.target_index]['end']:
+    #     #         self.end_of_search = True
+    #     #         self.waypoints = [{'x': 0, 'y':0, 'end': True}]
+
+    #     # if the robot is at the position with a precision of target_precision
+    #     if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
+    #         self.target_index += 1
             
-            if self.target_index >= len(self.waypoints) - 1:
-                # self.target_index = 0
-                self.end_of_search = True
-                self.waypoints = [{'x': 0, 'y':0, 'end': True}]
-            elif not self.end_of_search:
-                print(f'{self.target_index} {self.waypoints[self.target_index]}')
-                self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
-            if verbose_target:
-                print("Target reached! New target: ",
-                      self.target_position[0:2])
+    #         if self.target_index >= len(self.waypoints) - 1:
+    #             # self.target_index = 0
+    #             self.end_of_search = True
+    #             self.waypoints = [{'x': 0, 'y':0, 'end': True}]
+    #         elif not self.end_of_search:
+    #             print(f'{self.target_index} {self.waypoints[self.target_index]}')
+    #             self.target_position[0:2] = [self.waypoints[self.target_index]['x'], self.waypoints[self.target_index]['y'], 0]
+    #         if verbose_target:
+    #             print("Target reached! New target: ",
+    #                   self.target_position[0:2])
 
-        # This will be in ]-pi;pi]
-        self.target_position[2] = np.arctan2(
-            self.target_position[1] - self.current_pose[1], self.target_position[0] - self.current_pose[0])
-        # This is now in ]-2pi;2pi[
-        angle_left = self.target_position[2] - self.current_pose[5]
-        # Normalize turn angle to ]-pi;pi]
-        angle_left = (angle_left + 2 * np.pi) % (2 * np.pi)
-        if (angle_left > np.pi):
-            angle_left -= 2 * np.pi
+    #     # This will be in ]-pi;pi]
+    #     self.target_position[2] = np.arctan2(
+    #         self.target_position[1] - self.current_pose[1], self.target_position[0] - self.current_pose[0])
+    #     # This is now in ]-2pi;2pi[
+    #     angle_left = self.target_position[2] - self.current_pose[5]
+    #     # Normalize turn angle to ]-pi;pi]
+    #     angle_left = (angle_left + 2 * np.pi) % (2 * np.pi)
+    #     if (angle_left > np.pi):
+    #         angle_left -= 2 * np.pi
 
-        # Turn the robot to the left or to the right according the value and the sign of angle_left
-        yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
-        # non proportional and decreasing function
-        pitch_disturbance = clamp(
-            np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
+    #     # Turn the robot to the left or to the right according the value and the sign of angle_left
+    #     yaw_disturbance = self.MAX_YAW_DISTURBANCE * angle_left / (2 * np.pi)
+    #     # non proportional and decreasing function
+    #     pitch_disturbance = clamp(
+    #         np.log10(abs(angle_left)), self.MAX_PITCH_DISTURBANCE, 0.1)
 
-        if verbose_movement:
-            distance_left = np.sqrt(((self.target_position[0] - self.current_pose[0]) ** 2) + (
-                (self.target_position[1] - self.current_pose[1]) ** 2))
-            print("remaning angle: {:.4f}, remaning distance: {:.4f}".format(
-                angle_left, distance_left))
-        return yaw_disturbance, pitch_disturbance
+    #     if verbose_movement:
+    #         distance_left = np.sqrt(((self.target_position[0] - self.current_pose[0]) ** 2) + (
+    #             (self.target_position[1] - self.current_pose[1]) ** 2))
+    #         print("remaning angle: {:.4f}, remaning distance: {:.4f}".format(
+    #             angle_left, distance_left))
+    #     return yaw_disturbance, pitch_disturbance
 
     def is_emergency(self, description: str) -> bool:
-        prompt = f"""
-            You are a search-and-rescue assistant in the following environment:{self.world_description}
+        # prompt = f"""
+        #     You are a search-and-rescue assistant in the following environment:{self.world_description}
              
-            You're tasked to confirm if people are present in a location and if they are safe or injured. 
-            Currently, it is being done in a 3D simulation so assume all 3D renderings are real. 
-            Given the description below, provide a response only if a person is found.
+        #     You're tasked to confirm if people are present in a location and if they are safe or injured. 
+        #     Currently, it is being done in a 3D simulation so assume all 3D renderings are real. 
+        #     Given the description below, provide a response only if a person is found.
+
+        #     Description: "{description}"
+
+        #     Explain the scene. Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Assistance"
+        #     if and only if the person may be injured or in a dangerous situation. If they are not injured or in a dangerous situation, state "2. Person does not require assistance". If the
+        #     person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
+        # """
+        
+        prompt = f"""
+            You are a search-and-rescue assistant for first responders in the following environment: {self.world_description}
+
+            You are tasked to confirm if people are present in the description and message below.
 
             Description: "{description}"
+            Message: "{self.message}"
 
             Explain the scene. Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Assistance"
             if and only if the person may be injured or in a dangerous situation. If they are not injured or in a dangerous situation, state "2. Person does not require assistance". If the
             person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
         """
-        
+
         completion = client.chat.completions.create(
             model="Qwen/Qwen2.5-72B-Instruct",
             messages=[
@@ -336,18 +391,21 @@ class Mavic(Robot):
         height = self.camera.getHeight()
         width = self.camera.getWidth()
 
+        at_goal_position = False
+
         while self.step(self.time_step) != -1:
             max_conf = 0
             best_result = None
             best_yolo_image = None
             image_rotate_angle = None
             person_detected = False
+            
                 
             # current_time = self.getTime()
 
             roll, pitch, yaw = self.imu.getRollPitchYaw()
             x_pos, y_pos, altitude = self.gps.getValues()
-            roll_acc, pitch_acc, _ = self.gyro.getValues()
+            roll_acceleration, pitch_acceleration, _ = self.gyro.getValues()
             self.set_position([x_pos, y_pos, altitude, roll, pitch, yaw])
 
             telemetry_data = {
@@ -356,7 +414,7 @@ class Mavic(Robot):
                 "roll": roll, "pitch": pitch, "yaw": yaw,
                 "conf": 0.0, "person_found": False, "vlm_description": False,
                 "requires_assistance": False, "assistance_instructions": '', 
-                "world_name": self.world_name, "detection_id": False
+                "world_name": self.world_name, "detection_id": False, "message": self.message
             }
 
             # print(f'Height: {height}, Width: {width}')
@@ -366,18 +424,29 @@ class Mavic(Robot):
             bgr_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR) # YOLO
             rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
             pil_image = Image.fromarray(rgb_image)
-        
-            yolo_image_rotations = [bgr_image
-                                    , cv2.rotate(bgr_image, cv2.ROTATE_90_CLOCKWISE)
-                                    , cv2.rotate(bgr_image, cv2.ROTATE_180)
-                                    , cv2.rotate(bgr_image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
 
             if not start_up_complete and altitude >= self.target_altitude:
                 start_up_complete = True
 
             # Run YOLOv8 to find people
             # rotate image to thoroughly look through people
-            if start_up_complete:
+            if start_up_complete and abs(x_pos - self.goal_position[0]) <= self.target_precision and abs(y_pos - self.goal_position[1]) <= self.target_precision:
+                if not at_goal_position:
+                    print('at goal')
+                    self.waypoints = [[self.goal_position[0]-1, self.goal_position[1]-1]
+                                    , [self.goal_position[0]-1, self.goal_position[1]+1]
+                                    , [self.goal_position[0]+1, self.goal_position[1]+1]
+                                    , [self.goal_position[0]+1, self.goal_position[1]-1]]
+                    # self.target_precision = 0.5
+                    # self.camera_pitch_motor = 1.7
+                    self.target_altitude = 20
+                    at_goal_position = True
+                    print(self.waypoints, self.target_precision)
+
+                yolo_image_rotations = [bgr_image
+                                        , cv2.rotate(bgr_image, cv2.ROTATE_90_CLOCKWISE)
+                                        , cv2.rotate(bgr_image, cv2.ROTATE_180)
+                                        , cv2.rotate(bgr_image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
                 for i in range(len(yolo_image_rotations)):
                     results = yolo_model(yolo_image_rotations[i], verbose=False)[0]
                     
@@ -419,24 +488,24 @@ class Mavic(Robot):
                     elif image_rotate_angle == -90:
                         best_yolo_image = cv2.rotate(best_yolo_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-                    gray = cv2.cvtColor(best_yolo_image, cv2.COLOR_BGR2GRAY)
+                    # gray = cv2.cvtColor(best_yolo_image, cv2.COLOR_BGR2GRAY)
 
-                    _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+                    # _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
 
-                    contours, hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    # contours, hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                    contour = contours[0]
+                    # contour = contours[0]
 
-                    x, y, w, h = cv2.boundingRect(contour)
+                    # x, y, w, h = cv2.boundingRect(contour)
 
-                    cx = (x-w) // 2
-                    cy = (y-h) // 2
+                    # cx = (x-w) // 2
+                    # cy = (y-h) // 2
 
 
                     # est_loc = self.estimate_location((rotated_x1, rotated_y1))
-                    est_loc = self.estimate_location((cx, cy))
-                    est_x = int(est_loc[0])
-                    est_y = int(est_loc[1])
+                    # est_loc = self.estimate_location((cx, cy))
+                    # est_x = int(est_loc[0])
+                    # est_y = int(est_loc[1])
 
 
                     # for result in best_results.boxes.data:
@@ -456,7 +525,7 @@ class Mavic(Robot):
                     #         est_x = int(est_loc[0])
                     #         est_y = int(est_loc[1])
 
-                if person_detected and self.far_from_other_detections(new_detection=(est_x, est_y), detections=detections) and (est_x, est_y) not in detections:
+                if person_detected: # and self.far_from_other_detections(new_detection=(est_x, est_y), detections=detections) and (est_x, est_y) not in detections:
                     # set OG image
                     # cv2.rectangle(bgr_image, (int(rotated_x1), int(rotated_y1)), (int(rotated_x2), int(rotated_y2)), (0, 255, 0), 2)
                     # cv2.putText(bgr_image, f"Person {conf:.2f}", (int(rotated_x1), int(rotated_y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
@@ -470,6 +539,8 @@ class Mavic(Robot):
                     output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
                     vlm_description = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
                     detection_id += 1
+
+                    vlm_description = vlm_description.replace('3D rendering', '')
 
                     # print(f'VLM description: {vlm_description}')
 
@@ -507,10 +578,10 @@ class Mavic(Robot):
                         cv2.putText(bgr_image, f"Person found...", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
 
-                        telemetry_data['est_x'] = int(est_loc[0])
-                        telemetry_data['est_y'] = int(est_loc[1])
+                        # telemetry_data['est_x'] = int(est_loc[0])
+                        # telemetry_data['est_y'] = int(est_loc[1])
 
-                        detections.append((int(est_loc[0]), int(est_loc[1])))
+                        # detections.append((int(est_loc[0]), int(est_loc[1])))
 
                         telemetry_data['detection_id'] = detection_id
 
@@ -528,59 +599,75 @@ class Mavic(Robot):
 
                     best_conf = 0.0
                 
-            if self.target_index >= len(self.waypoints) and not self.end_of_search:
-                # All waypoints done → start return-to-home
-                self.end_of_search = True
-                self.target_position[0:2] = [0, 0]
-                self.target_altitude = 20
-                print("[Mission] All waypoints complete. Returning to (0,0).")
+            # if self.target_index >= len(self.waypoints) and not self.end_of_search:
+            #     # All waypoints done → start return-to-home
+            #     self.end_of_search = True
+            #     self.target_position[0:2] = [0, 0]
+            #     self.target_altitude = 20
+            #     print("[Mission] All waypoints complete. Returning to (0,0).")
 
-            if self.end_of_search:
-                if abs(x_pos) < 0.5 and abs(y_pos) < 0.5:
-                    self.target_altitude = 0
+            # if self.end_of_search:
+            #     if abs(x_pos) < 0.5 and abs(y_pos) < 0.5:
+            #         self.target_altitude = 0
 
-                if self.target_altitude < 0.25:
-                    self.front_left_motor.setVelocity(0)
-                    self.front_right_motor.setVelocity(0)
-                    self.rear_left_motor.setVelocity(0)
-                    self.rear_right_motor.setVelocity(0)
+            #     if self.target_altitude < 0.25:
+            #         self.front_left_motor.setVelocity(0)
+            #         self.front_right_motor.setVelocity(0)
+            #         self.rear_left_motor.setVelocity(0)
+            #         self.rear_right_motor.setVelocity(0)
 
-                    print('Survey Completed. Sending Completion Signal')
+            #         print('Survey Completed. Sending Completion Signal')
 
-                    try:
-                        msg = cipher.encrypt(b"MISSION_COMPLETE")
-                        client.sendall(len(msg).to_bytes(8, byteorder='big'))
-                        client.sendall(msg)
-                    except:
-                        print("⚠️ Could not notify server of completion.")
+            #         try:
+            #             msg = cipher.encrypt(b"MISSION_COMPLETE")
+            #             client.sendall(len(msg).to_bytes(8, byteorder='big'))
+            #             client.sendall(msg)
+            #         except:
+            #             print("⚠️ Could not notify server of completion.")
 
-                    break  # Exit run loop
+            #         break  # Exit run loop
 
             if altitude > self.target_altitude - 1:
                 if self.getTime() - t1 > 0.1:
-                    yaw_disturbance, pitch_disturbance = self.move_to_target()
+                    yaw_disturbance, pitch_disturbance = self.move_to_target(self.waypoints, verbose_movement=False, verbose_target=False)
                     t1 = self.getTime()
 
-            roll_input = self.K_ROLL_P * clamp(roll, -1, 1) + roll_acc + roll_disturbance
-            pitch_input = self.K_PITCH_P * clamp(pitch, -1, 1) + pitch_acc + pitch_disturbance
-            yaw_input = yaw_disturbance
-            clamped_altitude_diff = clamp(self.target_altitude - altitude + self.K_VERTICAL_OFFSET, -1, 1)
-            vertical_input = self.K_VERTICAL_P * pow(clamped_altitude_diff, 3.0)
+            # roll_input = self.K_ROLL_P * clamp(roll, -1, 1) + roll_acc + roll_disturbance
+            # pitch_input = self.K_PITCH_P * clamp(pitch, -1, 1) + pitch_acc + pitch_disturbance
+            # yaw_input = yaw_disturbance
+            # clamped_altitude_diff = clamp(self.target_altitude - altitude + self.K_VERTICAL_OFFSET, -1, 1)
+            # vertical_input = self.K_VERTICAL_P * pow(clamped_altitude_diff, 3.0)
 
-            self.front_left_motor.setVelocity(self.K_VERTICAL_THRUST + vertical_input - yaw_input + pitch_input - roll_input)
-            self.front_right_motor.setVelocity(- (self.K_VERTICAL_THRUST + vertical_input + yaw_input + pitch_input + roll_input))
-            self.rear_left_motor.setVelocity(- (self.K_VERTICAL_THRUST + vertical_input + yaw_input - pitch_input - roll_input))
-            self.rear_right_motor.setVelocity(self.K_VERTICAL_THRUST + vertical_input - yaw_input - pitch_input + roll_input)
-        
-            if self.end_of_search and self.target_altitude < 0.25:
-                print("[Mission] Drone has landed at home position.")
-                try:
-                    final_msg = cipher.encrypt(b"MISSION_COMPLETE")
-                    client.sendall(len(final_msg).to_bytes(8, byteorder='big'))
-                    client.sendall(final_msg)
-                except:
-                    print("⚠️ Could not notify server of completion.")
-                break  # Exit run loop
+            # self.front_left_motor.setVelocity(self.K_VERTICAL_THRUST + vertical_input - yaw_input + pitch_input - roll_input)
+            # self.front_right_motor.setVelocity(- (self.K_VERTICAL_THRUST + vertical_input + yaw_input + pitch_input + roll_input))
+            # self.rear_left_motor.setVelocity(- (self.K_VERTICAL_THRUST + vertical_input + yaw_input - pitch_input - roll_input))
+            # self.rear_right_motor.setVelocity(self.K_VERTICAL_THRUST + vertical_input - yaw_input - pitch_input + roll_input)
+            
+            roll_input = self.K_ROLL_P * clamp(roll, -1, 1) + roll_acceleration + roll_disturbance
+            pitch_input = self.K_PITCH_P * clamp(pitch, -1, 1) + pitch_acceleration + pitch_disturbance
+            yaw_input = yaw_disturbance
+            clamped_difference_altitude = clamp(self.target_altitude - altitude + self.K_VERTICAL_OFFSET, -1, 1)
+            vertical_input = self.K_VERTICAL_P * pow(clamped_difference_altitude, 3.0)
+
+            front_left_motor_input = self.K_VERTICAL_THRUST + vertical_input - yaw_input + pitch_input - roll_input
+            front_right_motor_input = self.K_VERTICAL_THRUST + vertical_input + yaw_input + pitch_input + roll_input
+            rear_left_motor_input = self.K_VERTICAL_THRUST + vertical_input + yaw_input - pitch_input - roll_input
+            rear_right_motor_input = self.K_VERTICAL_THRUST + vertical_input - yaw_input - pitch_input + roll_input
+
+            self.front_left_motor.setVelocity(front_left_motor_input)
+            self.front_right_motor.setVelocity(-front_right_motor_input)
+            self.rear_left_motor.setVelocity(-rear_left_motor_input)
+            self.rear_right_motor.setVelocity(rear_right_motor_input)
+
+            # if self.end_of_search and self.target_altitude < 0.25:
+            #     print("[Mission] Drone has landed at home position.")
+            #     try:
+            #         final_msg = cipher.encrypt(b"MISSION_COMPLETE")
+            #         client.sendall(len(final_msg).to_bytes(8, byteorder='big'))
+            #         client.sendall(final_msg)
+            #     except:
+            #         print("⚠️ Could not notify server of completion.")
+            #     break  # Exit run loop
 
 
         # After loop:

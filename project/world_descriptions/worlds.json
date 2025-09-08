@@ -44,6 +44,20 @@
             , "upper_y": -28
         }
     ]
+    , "scenario" :[
+        {
+            "scenario_type": "Safe"
+            , "message": "I'm standing in a parking lot"
+            , "x": 9
+            , "y": 31
+        },
+        {
+            "scenario_type": "Rescue"
+            , "message": "I'm lost in the woods"
+            , "x": -33
+            , "y": -11
+        }
+    ]
 }
 , {
     "world_name": "test_world_2"
@@ -89,6 +103,19 @@
             , "lower_y": -12
             , "upper_y": -28
         }
+    ], "scenario" :[
+        {
+            "scenario_type": "Safe"
+            , "message": "We're stranded on the roof"
+            , "x": 44
+            , "y": 24
+        },
+        {
+            "scenario_type": "Rescue"
+            , "message": "My car broke down and I'm stuck in the water"
+            , "x": 25
+            , "y": -23
+        }
     ]
 }
 , {
@@ -127,6 +154,19 @@
             , "upper_x": 37
             , "lower_y": 35
             , "upper_y": 50
+        }
+    ], "scenario" :[
+        {
+            "scenario_type": "Safe"
+            , "message": "I'm locked out my apartment."
+            , "x": -8
+            , "y": -32
+        },
+        {
+            "scenario_type": "Rescue"
+            , "message": "I just got hit by a car and can't get out."
+            , "x": 17
+            , "y": 333
         }
     ]
 }

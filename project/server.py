@@ -28,19 +28,6 @@ connection_timestamps = []
 lock = threading.Lock()
 server_running = True  # Flag to control the server loop
 
-# def detect_jamming():
-#     """Detects if too many connections occur in a short time window."""
-#     global connection_timestamps
-#     with lock:
-#         current_time = time.time()
-#         # Remove timestamps older than WINDOW_DURATION
-#         connection_timestamps = [t for t in connection_timestamps if current_time - t < WINDOW_DURATION]
-
-#         if len(connection_timestamps) >= MAX_CONNECTIONS_PER_WINDOW:
-#             print("🚨 WARNING: Possible jamming detected! Too many connections in a short time.")
-#             return True
-#     return False
-
 class Node:
     def __init__(self, x, y):
         self.x, self.y = x, y
@@ -78,11 +65,6 @@ class RRTStar:
 
     def distance(self, n1, n2):
         return np.hypot(n1.x - n2.x, n1.y - n2.y)
-
-    # def sample(self):
-    #     if random.random() < self.goal_sample_rate:
-    #         return self.goal
-    #     return Node(random.uniform(0, self.map_size[0]), random.uniform(0, self.map_size[1]))
 
     def sample(self):
         if random.random() < self.goal_sample_rate:
@@ -207,19 +189,8 @@ def handle_client(conn, addr, waypoints):
     with lock:
         connection_timestamps.append(time.time())  # Log new connection
 
-    # if detect_jamming():
-    #     print(f"⚠️ Blocking connection from {addr} due to possible jamming.")
-    #     conn.send(cipher.encrypt(b"Too many connections! Possible jamming detected."))
-    #     conn.close()
-    #     return
-
     print(f"🔗 New connection from {addr}")
-    # try:
-    #     with open(f"data_from_{addr}.txt", "x") as file:
-    #         file.write(f"File created for {addr}\n")
-    # except FileExistsError:
-    #     print("File already exists.")
-    #     open(f"data_from_{addr}.txt", "w").close()
+
     try:
         # Send waypoints as JSON
         waypoints_json = json.dumps(waypoints)
@@ -284,19 +255,6 @@ def handle_client(conn, addr, waypoints):
                 with open(results_json_filepath, "w") as f:
                     json.dump(data, f, indent=4)
 
-                # print(detection)
-                # Assume detection includes drone state
-                # x_p, y_p = estimate_location(detection)
-                x = detection['est_x']
-                y =  detection['est_y']
-
-                new_goal = {'name': f'goal_{x},{y}', 'x': x, 'y':y}
-
-                if new_goal in goals:
-                    break
-                else: 
-                    goals.append(new_goal)
-                    goal_queue.put(new_goal)
         conn.close()
         print("Connection Closed.")
 
@@ -342,9 +300,50 @@ def on_key(event):
         print('Closing Server...')
         server_running = False
 
+def get_world():
+    world_input = input("""
+===============================================================================================================
+                        Please select number that corresponds to the active test world: \n
+                        1. Test World 1 (Neutral Suburban)
+                        2. Test World 2 (Flood)
+                        3. Test World 3 (Urban City)
+===============================================================================================================
+                        Selection: """)
+    print("""
+===============================================================================================================
+""")
+    if world_input == "1":
+        test_world = "test_world_1"
+    elif world_input == "2":
+        test_world = "test_world_2"
+    elif world_input == "3":
+        test_world = "test_world_3"
+    else:
+        print('Invalid Input. Please try again.')
+        test_world = get_world()
+    return test_world
+
+def get_scenario():
+    scenario_input = input("""
+===============================================================================================================
+                        Please select number that corresponds to the active test world: \n
+                        1. Safe
+                        2. Rescue
+===============================================================================================================
+                        Selection: """)
+
+    if scenario_input == "1":
+        scenario_type = "Safe"
+    elif scenario_input == "2":
+        scenario_type = "Rescue"
+    else:
+        print('Invalid Input. Please try again.')
+        scenario_type = get_scenario()
+    return scenario_type
+
 if __name__ == "__main__":
     # Global Variables
-    global fig, ax, goals, paths, colors, goal_queue
+    global fig, ax, paths, colors, goal_queue #, goals
 
     # Get environment dimension
     # x_dim = int(input("Enter X dimension of explorable environment (in meters): "))
@@ -358,80 +357,14 @@ if __name__ == "__main__":
     x_path = x_dim-20
     y_path = y_dim-20
 
-    waypoints = [
-                    {'x': -36.75, 'y': -42.55, 'end': False},     # Start
-                    {'x': 42.75, 'y': -42.55, 'end': False},      # East
-                    # {'x': -36.75, 'y': -42.55, 'end': False},     # West
-
-                    # {'x': -36.75, 'y': -27.65, 'end': False},     # North
-                    {'x': 42.75, 'y': -27.65, 'end': False},      # East
-                    {'x': -36.75, 'y': -27.65, 'end': False},     # West
-
-                    {'x': -36.75, 'y': -12.75, 'end': False},     # North
-                    {'x': 42.75, 'y': -12.75, 'end': False},      # East
-                    # {'x': -36.75, 'y': -12.75, 'end': False},     # West
-
-                    # {'x': -36.75, 'y': 2.15, 'end': False},       # North
-                    {'x': 42.75, 'y': 2.15, 'end': False},        # East
-                    {'x': -36.75, 'y': 2.15, 'end': False},       # West
-
-                    {'x': -36.75, 'y': 17.05, 'end': False},      # North
-                    {'x': 42.75, 'y': 17.05, 'end': False},       # East
-                    # {'x': -36.75, 'y': 17.05, 'end': False},      # West
-
-                    # {'x': -36.75, 'y': 31.95, 'end': False},      # North
-                    {'x': 42.75, 'y': 31.95, 'end': False},       # East
-                    {'x': -36.75, 'y': 31.95, 'end': False},      # West
-
-                    {'x': -36.75, 'y': 46.85, 'end': False},      # North
-                    {'x': 42.75, 'y': 46.85, 'end': False},       # East
-                    # {'x': -36.75, 'y': 46.85, 'end': False},       # West
-
-                    # {'x': -36.75, 'y': -42.55, 'end': False},      # South
-                    # {'x': -36.75, 'y': 46.85, 'end': False},       # North
-                    # {'x': -10.25, 'y': 46.85, 'end': False},       # East
-
-                    # {'x': -10.25, 'y': -42.55, 'end': False},      # South
-                    # {'x': -10.25, 'y': 46.85, 'end': False},       # North                    
-                    # {'x': 16.25, 'y': 46.85, 'end': False},        # East
-
-                    # {'x': 16.25, 'y': -42.55, 'end': False},      # South
-                    # {'x': 16.25, 'y': 46.85, 'end': False},       # North
-                    # {'x': 42.75, 'y': 46.85, 'end': False},       # East
-
-                    # {'x': 42.75, 'y': -42.55, 'end': False},       # South
-                    {'x': 0, 'y': 0, 'end': True}
-                                                    ]
-
-    # print(f"Waypoints created {x_dim} m x {y_dim} m \n {waypoints}")
-
-    # waypoints = generate_waypoints(x_dim=x_path, y_dim=x_path, step=step)
-    # print(f"Waypoints created {x_dim} m x {y_dim} m at every {step} meters")
-
     test_world = "" 
 
-    world_input = input("""
-===============================================================================================================
-                        Please select number that corresponds to the active test world: \n
-                        1. Test World 1 (Neutral Suburban)
-                        2. Test World 2 (Flood)
-                        3. Test World 3 (Urban City)
-===============================================================================================================
-                        Selection: """)
-    print("""
-===============================================================================================================
-""")
+    ### Get World & Scenario inputs
+    test_world = get_world()
+    scenario_input = get_scenario()
 
-    if world_input == "1":
-        test_world = "test_world_1"
-    elif world_input == "2":
-        test_world = "test_world_2"
-    elif world_input == "3":
-        test_world = "test_world_3"
-    else:
-        print('Invalid Input.')
-        quit()
-
+    
+    ### Get World data
     world_description_fp = './world_descriptions/worlds.json'
     environment = []
     world_description_json = []
@@ -444,15 +377,18 @@ if __name__ == "__main__":
         if desc['world_name'] == test_world:
             environment = desc['environment']
             world_description = desc['world_description']
+            for scenario_type in desc['scenario']:
+                if scenario_type['scenario_type'] == scenario_input:
+                    goal = (scenario_type['x'], scenario_type['y'])
+                    message = scenario_type['message']
             world_name = desc['world_name']
-            
-    world_details = { 'world_name': world_name
-                    , 'world_description': world_description
-                    , 'waypoints': waypoints}
 
+    print(environment, world_description, goal, message, world_name)
+
+    ### Get goal data
     start = (0,0)
-    goals = []
-    goal_queue = Queue()
+    # goals = []
+    # goal_queue = Queue()
     map_size = (x_dim, y_dim)
     obstacles = []
 
@@ -483,6 +419,30 @@ if __name__ == "__main__":
     plt.ion()
     plt.show()
 
+    ax.plot(goal[0], goal[1], 'or')
+    rrt = RRTStar(start, goal, map_size, obstacles)
+    path = rrt.plan(ax, pause_time=0.01)
+
+    if path:
+        px, py = zip(*path)
+        ax.plot(px, py, 'r-', linewidth=2)
+        # print(f'Path draw to {goal_name}')
+    else:
+        print(f'WARNING: No Path to {goal}')
+
+    waypoints = []
+
+    for point in path:
+        waypoints.append({'x': point[0], 'y': point[1], 'end': False})
+
+    world_details = { 'world_name': world_name
+                    , 'world_description': world_description
+                    , 'waypoints': path
+                    , 'goal_position': goal
+                    , 'message': message}
+
+    print(world_details)
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
         s.listen()
@@ -491,23 +451,4 @@ if __name__ == "__main__":
         accept_thread.start()
 
         while server_running:
-            try:
-                goal = goal_queue.get(timeout=0.1)
-                goal_name = goal['name']
-                goal_pos = (goal['x'], goal['y'])
-                # print(f'Planning path to {goal_name}: {goal_pos}')
-                ax.plot(goal_pos[0], goal_pos[1], 'or')
-
-                rrt = RRTStar(start, goal_pos, map_size, obstacles)
-                path = rrt.plan(ax, pause_time=0.01)
-
-                if path:
-                    px, py = zip(*path)
-                    ax.plot(px, py, 'r-', linewidth=2)
-                    # print(f'Path draw to {goal_name}')
-                else:
-                    print(f'WARNING: No Path to {goal_name}')
-
-                plt.pause(0.1)
-            except Empty:
-                plt.pause(0.01)
+            plt.pause(0.1)

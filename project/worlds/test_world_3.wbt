@@ -18,7 +18,6 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/trees/protos/BigSassafras.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/toyota/ToyotaPrius.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/dji/mavic/protos/Mavic2Pro.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/Auditorium.proto"
 
 WorldInfo {
   basicTimeStep 16
@@ -26,8 +25,8 @@ WorldInfo {
   }
 }
 Viewpoint {
-  orientation 0.49750584939899106 -0.5110906825143962 -0.7009095833706064 4.389697001822551
-  position 6.196918466588576 -65.02461083826557 204.58567762694463
+  orientation 0.500073821619848 -0.5035546515853486 -0.7045274201883689 4.375642481648691
+  position 7.094975581807297 -64.41331448329119 204.58567762694463
 }
 TexturedBackground {
 }
@@ -179,13 +178,19 @@ Mailbox {
 StripBuilding {
   translation 27 -50 0
   rotation 0 0 1 3.14159
-  name "strip building 1"
+  name "strip building 2"
   length 20
+}
+StripBuilding {
+  translation -12 -10 0
+  rotation 0 0 1 -5.307179586466759e-06
+  name "strip building 1"
+  length 30
 }
 StripBuilding {
   translation 27 -23 0
   rotation 0 0 1 3.14159
-  name "strip building 2"
+  name "strip building 3"
   length 50
 }
 Transform {
@@ -235,7 +240,7 @@ Transform {
   ]
 }
 Transform {
-  translation -18.0895 -42.2905 -0.000418452
+  translation -8.25352 -32.4543 -0.000366442
   rotation 6.38314999984765e-06 -2.6439899999368945e-06 0.9999999999761324 0.785399
   scale 0.01 0.01 0.01
   children [
@@ -424,8 +429,4 @@ BigSassafras {
 BigSassafras {
   translation 6.95 -48.75 0
   name "sassafras tree(23)"
-}
-Auditorium {
-  translation -30 -28 0
-  rotation 0 0 1 1.5708
 }
