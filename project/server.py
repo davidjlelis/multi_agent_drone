@@ -433,11 +433,11 @@ if __name__ == "__main__":
     waypoints = []
 
     for point in path:
-        waypoints.append({'x': point[0], 'y': point[1], 'end': False})
+        waypoints.append([int(point[0]), int(point[1])])
 
     world_details = { 'world_name': world_name
                     , 'world_description': world_description
-                    , 'waypoints': path
+                    , 'waypoints': waypoints
                     , 'goal_position': goal
                     , 'message': message}
 
