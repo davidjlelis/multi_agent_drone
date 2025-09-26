@@ -216,7 +216,7 @@ def handle_client(conn, addr, waypoints):
             return
 
         # Create/Empty Results json file
-        results_json_path = './results/'
+        results_json_path = './results/detections/'
         results_json_filename = 'results.json'
         results_json_filepath = os.path.join(results_json_path, results_json_filename)
         with open(results_json_filepath, "w") as f:

@@ -47,13 +47,13 @@
     , "scenario" :[
         {
             "scenario_type": "Safe"
-            , "message": "I'm standing in a parking lot"
+            , "message": "I'm sorry. I misdialed."
             , "x": 9
             , "y": 31
         },
         {
             "scenario_type": "Rescue"
-            , "message": "I'm lost in the woods"
+            , "message": "Help, I fell in the woods and I can't get up."
             , "x": -33
             , "y": -11
         }
@@ -106,15 +106,15 @@
     ], "scenario" :[
         {
             "scenario_type": "Safe"
-            , "message": "We're stranded on the roof"
-            , "x": 44
-            , "y": 24
+            , "message": "I'm locked out of my car."
+            , "x": 25
+            , "y": -23
         },
         {
             "scenario_type": "Rescue"
-            , "message": "My car broke down and I'm stuck in the water"
-            , "x": 25
-            , "y": -23
+            , "message": "My friend is passed out in the water."
+            , "x": -7
+            , "y": -41
         }
     ]
 }
@@ -158,15 +158,15 @@
     ], "scenario" :[
         {
             "scenario_type": "Safe"
-            , "message": "I'm locked out my apartment."
-            , "x": -8
+            , "message": "I'm locked out my apartment and I can't find my keys."
+            , "x": -2
             , "y": -32
         },
         {
             "scenario_type": "Rescue"
             , "message": "I just got hit by a car and can't get out."
             , "x": 17
-            , "y": 333
+            , "y": 33
         }
     ]
 }

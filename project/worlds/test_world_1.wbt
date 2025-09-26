@@ -29,8 +29,8 @@ WorldInfo {
   basicTimeStep 16
   FPS 30
   defaultDamping Damping {
-    linear 0.3
-    angular 0.3
+    linear 0.4
+    angular 0.4
   }
 }
 Viewpoint {

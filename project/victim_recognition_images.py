@@ -50,15 +50,17 @@ client = InferenceClient(provider="nebius", api_key=hf_api)
 
 def is_emergency(description: str) -> bool:
     prompt = f"""
-            You are a search-and-rescue assistant in an area victim to a disaster and are tasked to confirm if people are 
-            safe or injured. Currently, it is being done in a 3D simualtion so assume renderings are real. 
-            Given the description below, provide a response only if a person is found.
+            You are a search-and-rescue assistant for first responders in a city after an earthquake.
+
+            The description below is of an image and the message is from a caller requesting first responder assistance. 
+            Combining the context of the image and the description, respond with a full description of the scene.
 
             Description: "{description}"
+            Message From Caller: "We are trapped by a building."
 
-            Explain the scene. Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Assistance"
-            if and only if the person may be injured or in danger. If they are not injured, state "2. Person does not require assistance". If the
-            person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
+            Respond with "1. Person Found" if and only if the description includes a person. If no preson is found, state "1. No Person Found"
+            If so, include in the response "2. Person Requires Immediate Assistance" if and only if the person may be injured or in a dangerous situation based on the Description and Message From Caller. If they are not injured or in a dangerous situation, state "2. Person does not require assistance". 
+            If the person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders based on the Description and Message From Caller.
         """
     
     completion = client.chat.completions.create(
@@ -75,7 +77,8 @@ def is_emergency(description: str) -> bool:
     return completion.choices[0].message["content"]
 
 # video_file_name = 'waterfall'
-scene_path = './results/scenes/'
+# scene_path = './results/scenes/'
+img_path = './disaster_images_dataset/'
 img_results_path = '../videos/results/images/'
 json_results_path = '../videos/results/JSON/'
 
@@ -83,86 +86,90 @@ best_conf = 0
 
 results_data = {"conf": 0.0, "person_found": False, "requires_assistance": False,
                 "assistance_instructions": '', "detection_id": False, "video": False}
-for scene in os.listdir(scene_path):
-    if scene.endswith('.jpg'):
-        file_path = os.path.join(scene_path, scene)
 
-        scene_img = cv2.imread(file_path)
-        # cv2.imshow('Image', scene_img)
-        # cv2.waitKey(0)
-        height, width, channels = scene_img.shape
+for folder in os.listdir(img_results_path):
+    print(folder)
 
-        img_array = np.frombuffer(scene_img, dtype=np.uint8).reshape((height, width, channels))
-        bgr_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR) # YOLO
-        rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
-        pil_image = Image.fromarray(rgb_image)
+# for scene in os.listdir(scene_path):
+#     if scene.endswith('.jpg'):
+#         file_path = os.path.join(scene_path, scene)
 
-        json_file_name = f'{scene.replace(".jpg", "")}_results.json'
+#         scene_img = cv2.imread(file_path)
+#         # cv2.imshow('Image', scene_img)
+#         # cv2.waitKey(0)
+#         height, width, channels = scene_img.shape
 
-        with open(f'{json_results_path}{json_file_name}', "w") as f:
-            json.dump([], f)
+#         img_array = np.frombuffer(scene_img, dtype=np.uint8).reshape((height, width, channels))
+#         bgr_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR) # YOLO
+#         rgb_image = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
+#         pil_image = Image.fromarray(rgb_image)
 
-        # print(f'Processing frame {frame_number}')
-        results = yolo_model(bgr_image, verbose=False)[0]
-        person_detected = False
-        annotated_frame = results.plot()
-        # cv2.imshow('YOLOv8 Detection', annotated_frame)
-        # cv2.waitKey(0)
+#         json_file_name = f'{scene.replace(".jpg", "")}_results.json'
 
-        for result in results.boxes.data:
-            x1, y1, x2, y2, conf, cls = result.tolist()
+#         with open(f'{json_results_path}{json_file_name}', "w") as f:
+#             json.dump([], f)
 
-            print(cls)
+#         # print(f'Processing frame {frame_number}')
+#         results = yolo_model(bgr_image, verbose=False)[0]
+#         person_detected = False
+#         annotated_frame = results.plot()
+#         # cv2.imshow('YOLOv8 Detection', annotated_frame)
+#         # cv2.waitKey(0)
 
-            if int(cls) == 0:
-                if round(conf, 2) > 0.40:
-                    person_detected = True
-                    results_data['conf'] = conf
-                    print('Person found! ', conf)
-                    best_conf = 0
+#         for result in results.boxes.data:
+#             x1, y1, x2, y2, conf, cls = result.tolist()
 
-        if person_detected:
-            try:
-            # Pass image through VLM to get description
-                prompt = "Describe the image"
-                inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
-                output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
-                generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
-                print(generated_text)
+#             print(cls)
 
-            # Pass descrption through LLM to get rescue guidance
-                LLM_response = is_emergency(generated_text)
-                print(LLM_response)
-                #insert into client response
-                results_data['person_found'] = True
-                results_data['requires_assistance'] = True if 'Person Found' in LLM_response else False
-                results_data['assistance_instructions'] = LLM_response
-                results_data['detection_id'] = f'{scene}'
-                results_data['video'] = scene
-            except HfHubHTTPError as e:
-                if "402 Client Error" in str(e):
-                    print('Max calls for free trier credits.')
-                    continue
-                else:
-                    raise
+#             if int(cls) == 0:
+#                 if round(conf, 2) > 0.40:
+#                     person_detected = True
+#                     results_data['conf'] = conf
+#                     print('Person found! ', conf)
+#                     best_conf = 0
 
-            if results_data['person_found']:
-                cv2.putText(annotated_frame, f"Person found...", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
+#         if person_detected:
+#             try:
+#             # Pass image through VLM to get description
+#                 prompt = "Describe the image"
+#                 inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
+#                 output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
+#                 generated_text = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
+#                 print(generated_text)
+
+#             # Pass descrption through LLM to get rescue guidance
+#                 LLM_response = is_emergency(generated_text)
+#                 print(LLM_response)
+#                 #insert into client response
+#                 results_data['person_found'] = True
+#                 results_data['requires_assistance'] = True if 'Person Found' in LLM_response else False
+#                 results_data['assistance_instructions'] = LLM_response
+#                 results_data['detection_id'] = f'{scene}'
+#                 results_data['video'] = scene
+#             except HfHubHTTPError as e:
+#                 if "402 Client Error" in str(e):
+#                     print('Max calls for free trier credits.')
+#                     continue
+#                 else:
+#                     raise
+
+#             if results_data['person_found']:
+#                 cv2.putText(annotated_frame, f"Person found...", (10, 30),
+#                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
                 
-                # cv2.imwrite(f'{yolo_results_path}{video_file_name}_results_{frame_number}.jpg', annotated_frame)
-                cv2.imwrite(f'{img_results_path}{scene}_results.jpg', annotated_frame) 
-                results_json = json.dumps(results_data)
+#                 # cv2.imwrite(f'{yolo_results_path}{video_file_name}_results_{frame_number}.jpg', annotated_frame)
+#                 cv2.imwrite(f'{img_results_path}{scene}_results.jpg', annotated_frame) 
+#                 results_json = json.dumps(results_data)
 
-                with open(f'{json_results_path}{json_file_name}', "r") as f:
-                    data = json.load(f)
+#                 with open(f'{json_results_path}{json_file_name}', "r") as f:
+#                     data = json.load(f)
 
-                data.append(results_json)
+#                 data.append(results_json)
 
-                with open(f'{json_results_path}{json_file_name}', "w") as f:
-                    json.dump(data, f, indent=4)
+#                 with open(f'{json_results_path}{json_file_name}', "w") as f:
+#                     json.dump(data, f, indent=4)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break 
+#         if cv2.waitKey(1) & 0xFF == ord('q'):
+#             break 
 
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()

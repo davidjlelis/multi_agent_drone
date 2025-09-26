@@ -21,8 +21,6 @@ from cryptography.fernet import Fernet
 sys.path.append("../..")  # Allow imports from the parent directory
 from key_manager import encryption_key  # Import the shared key
 import re
-import math
-
 cipher = Fernet(encryption_key)
 
 SAVE_PATH = "latest_detection.jpg"
@@ -68,7 +66,7 @@ class Mavic(Robot):
     K_PITCH_P = 30.0
     MAX_YAW_DISTURBANCE = 0.4
     MAX_PITCH_DISTURBANCE = -1
-    target_precision = 1.5
+    target_precision = 2
 
     def __init__(self):
         super().__init__()
@@ -95,9 +93,9 @@ class Mavic(Robot):
         self.rear_right_motor = self.getDevice("rear right propeller")
 
         self.camera_pitch_motor = self.getDevice("camera pitch")
-        self.camera_pitch_motor.setPosition(1.7)        
+        self.camera_pitch_motor.setPosition(0.5)        
         self.camera_yaw_motor = self.getDevice("camera yaw")
-        self.camera_yaw_motor.setPosition(0.0)
+        self.camera_yaw_motor.setPosition(1.57)
         self.camera_roll_motor = self.getDevice("camera roll")
         self.camera_roll_motor.setPosition(0.0)    # level
 
@@ -110,7 +108,15 @@ class Mavic(Robot):
         self.target_position = [0, 0, 0]
         self.target_index = 0
         self.target_altitude = 10
-        self.end_of_search = False
+        self.orbiting = False
+        self.start_scanning = False
+        self.orbit_loops = 0
+        self.total_orbit_points = 0
+        self.return_home = False
+        self.orbit_started = False
+        self.yolo_interval = 1
+        self.last_yolo_time = 0.0
+
 
         # Connect to server to get waypoints
         self.server_ip = 'localhost'
@@ -167,14 +173,23 @@ class Mavic(Robot):
 
             # if the robot is at the position with a precision of target_precision
             if all([abs(x1 - x2) < self.target_precision for (x1, x2) in zip(self.target_position, self.current_pose[0:2])]):
-
+                # print(f'At target position: {self.target_position}')
                 self.target_index += 1
+                if self.orbiting and self.target_index >= self.total_orbit_points:
+                    # only count a completed orbit if we've actually started orbiting (left the goal)
+                    if self.orbit_started:
+                        print('One orbit complete')
+                        self.orbit_loops += 1
+                    # reset index so we continue following orbit waypoints if needed
+                    self.target_index = 0
+
                 if self.target_index > len(waypoints) - 1:
                     self.target_index = 0
                 self.target_position[0:2] = waypoints[self.target_index]
                 if verbose_target:
                     print("Target reached! New target: ",
                         self.target_position[0:2])
+                # print(f'Moving to new target position: {self.target_position}')
 
             # This will be in ]-pi;pi]
             self.target_position[2] = np.arctan2(
@@ -209,9 +224,9 @@ class Mavic(Robot):
             Description: "{description}"
             Message From Caller: "{self.message}"
 
-            Respond with "1. Person Found" if the description includes a person. If so, include in the response "2. Person Requires Immediate Assistance"
-            if and only if the person may be injured or in a dangerous situation. If they are not injured or in a dangerous situation, state "2. Person does not require assistance". If the
-            person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders.
+            Respond with "1. Person Found" if and only if the description includes a person. If no preson is found, state "1. No Person Found"
+            If so, include in the response "2. Person Requires Immediate Assistance" if and only if the person may be injured or in a dangerous situation based on the Description and Message From Caller. If they are not injured or in a dangerous situation, state "2. Person does not require assistance". 
+            If the person does require assistance, include "3. Assistance needed" and the kind of assistance they would need from first responders based on the Description and Message From Caller.
         """
         try:
             completion = client.chat.completions.create(
@@ -232,6 +247,16 @@ class Mavic(Robot):
         except Exception as e:
             print(f'Unexcepted failure in LLM call: {e}')
             return "Unknwon error"
+        
+    def orbit_path(self, radius):
+        x0, y0 = (self.goal_position[0], self.goal_position[1])
+        points = []
+        for i in range(8):
+            theta = math.radians(45 * i)  # Convert degrees to radians
+            x = x0 + radius * math.cos(theta)
+            y = y0 + radius * math.sin(theta)
+            points.append([x, y, 0])
+        return points
 
     def run(self):
         print(f'Starting up {self.getName()}')
@@ -260,10 +285,12 @@ class Mavic(Robot):
         height = self.camera.getHeight()
         width = self.camera.getWidth()
 
-        at_goal_position = False
+        orbit_radius = 5.0
+        start_orbit_threshold = orbit_radius * 0.8
+
+        prev_vlm_desc = []
 
         iterations = 0
-        max_iterations = False
 
         while self.step(self.time_step) != -1:
             max_conf = 0
@@ -293,52 +320,74 @@ class Mavic(Robot):
 
             if not start_up_complete and altitude >= self.target_altitude:
                 start_up_complete = True
+            
+            if abs(x_pos - self.goal_position[0]) <= self.target_precision and abs(y_pos - self.goal_position[1]) <= self.target_precision and not self.orbiting:
+                print('At goal. Begin Orbitting path')
+                self.waypoints = self.orbit_path(radius=orbit_radius)
+                self.total_orbit_points = len(self.waypoints)
+                self.orbiting = True
+                self.orbit_started = False            # haven't actually started moving on orbit yet
+                self.start_scanning = False           # scanning only after orbit movement starts
+                self.target_index = 0                 # start at the first orbit waypoint
+                # force the controller to aim at the first orbit waypoint immediately:
+                self.target_position[0:2] = self.waypoints[self.target_index]
+
+
+            if self.orbiting and self.target_altitude > 5.1:
+                self.target_altitude -= 0.1
+
+            if self.orbiting and not self.start_scanning:
+                dist_from_goal = math.sqrt((x_pos - self.goal_position[0])**2 + (y_pos-self.goal_position[1])**2)
+                if dist_from_goal >= start_orbit_threshold:
+                    print("Drone at orbit path. begin scanning...")
+                    self.start_scanning = True
+                    self.orbit_started = True   # <-- now we truly started orbiting
+
 
             # Run YOLOv8 to find people
             # rotate image to thoroughly look through people
-            if start_up_complete and not max_iterations and abs(x_pos - self.goal_position[0]) <= self.target_precision and abs(y_pos - self.goal_position[1]) <= self.target_precision:
-                if not at_goal_position:
-                    print('at goal')
-                    self.waypoints = [[self.goal_position[0], self.goal_position[1]]]
-                    self.target_altitude = 20
-                    at_goal_position = True
+            if start_up_complete and not self.return_home and self.orbiting and self.start_scanning:
+                current_time = self.getTime()
+                if current_time - self.last_yolo_time > self.yolo_interval:
+                    self.last_yolo_time = current_time
+                    yolo_image_rotations = [bgr_image
+                                            , cv2.rotate(bgr_image, cv2.ROTATE_90_CLOCKWISE)
+                                            , cv2.rotate(bgr_image, cv2.ROTATE_180)
+                                            , cv2.rotate(bgr_image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
+                    for i in range(len(yolo_image_rotations)):
+                        results = yolo_model(yolo_image_rotations[i], verbose=False)[0]
+                        
+                        for box in results.boxes:
+                            cls = int(box.cls[0])
+                            conf = float(box.conf[0])
+                            if cls in (0,2) and conf > max_conf and conf > 0.8:
+                                best_result = box
+                                best_yolo_image = yolo_image_rotations[i]
+                                max_conf = conf
 
-
-                yolo_image_rotations = [bgr_image
-                                        , cv2.rotate(bgr_image, cv2.ROTATE_90_CLOCKWISE)
-                                        , cv2.rotate(bgr_image, cv2.ROTATE_180)
-                                        , cv2.rotate(bgr_image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
-                for i in range(len(yolo_image_rotations)):
-                    results = yolo_model(yolo_image_rotations[i], verbose=False)[0]
-                    
-                    for box in results.boxes:
-                        cls = int(box.cls[0])
-                        conf = float(box.conf[0])
-                        if cls == 0 and conf > max_conf and conf > 0.8:
-                            best_result = box
-                            best_yolo_image = yolo_image_rotations[i]
-                            max_conf = conf
-
-                            if i == 0:
-                                image_rotate_angle = 0
-                            elif i == 1:
-                                image_rotate_angle = -90
-                            elif i == 2:
-                                image_rotate_angle = 180
-                            elif i == 3:
-                                image_rotate_angle = 90
+                                if i == 0:
+                                    image_rotate_angle = 0
+                                elif i == 1:
+                                    image_rotate_angle = -90
+                                elif i == 2:
+                                    image_rotate_angle = 180
+                                elif i == 3:
+                                    image_rotate_angle = 90
 
             if best_result is not None:
                 x1, y1, x2, y2 = best_result.xyxy[0].tolist()
                 conf = float(best_result.conf[0])
                 cls = int(best_result.cls[0])
-                if cls == 0:
+                if cls in (0, 2):
                     person_detected = True
                     telemetry_data['conf'] = conf
 
                     # set rotated image
                     cv2.rectangle(best_yolo_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                    cv2.putText(best_yolo_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                    if cls == 0:
+                        cv2.putText(best_yolo_image, f"Person {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
+                    elif cls == 2:
+                        cv2.putText(best_yolo_image, f"Car {conf:.2f}", (int(x1), int(y1)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0,255,0), 1)
 
                     if image_rotate_angle == 0:
                         pass
@@ -363,65 +412,67 @@ class Mavic(Robot):
 
                     vlm_description = vlm_description.replace('3D rendering', '')
 
-                    print(f'VLM description: {vlm_description}')
+                    if vlm_description not in prev_vlm_desc:
+                        print(f'VLM description: {vlm_description}')
 
-                    yolo_detection = f'{detection_id}_yolo_detection.jpg'
-                    yolo_detection_path = os.path.join(detections_folder, yolo_detection)
+                        yolo_detection = f'{detection_id}_yolo_detection.jpg'
+                        yolo_detection_path = os.path.join(detections_folder, yolo_detection)
 
-                    try:
-                        # LLM Processing
-                        LLM_response = self.is_emergency(vlm_description)
-
-                        #insert into client response
-                        telemetry_data['vlm_description'] = vlm_description
-                        telemetry_data['person_found'] = True if '1. Person Found' in LLM_response else False
-                        telemetry_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
-                        telemetry_data['assistance_instructions'] = LLM_response
-                    except HfHubHTTPError as e:
-                        if "402 Client Error" in str(e):
-                            print('Max calls for free trier credits.')
-
-                            LLM_response = 'Max calls for free trier credits.'
-                            telemetry_data['vlm_description'] = vlm_description
-                            telemetry_data['person_found'] = True
-                            telemetry_data['requires_assistance'] = 'N/A'
-                            telemetry_data['assistance_instructions'] = LLM_response
-                            telemetry_data['detection_id'] = detection_id
-                        else:
-                            raise
-
-                    if telemetry_data['person_found'] or person_detected:
-                        cv2.imwrite(yolo_detection_path, best_yolo_image)
-                        cv2.putText(bgr_image, f"Person found...", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
-
-                        # telemetry_data['est_x'] = int(est_loc[0])
-                        # telemetry_data['est_y'] = int(est_loc[1])
-
-                        # detections.append((int(est_loc[0]), int(est_loc[1])))
-
-                        telemetry_data['detection_id'] = detection_id
-
-
-                        # Encrypt and send telemetry data for mapping
-                        telemetry_json = json.dumps(telemetry_data)
-                        encrypted_telemetry = cipher.encrypt(telemetry_json.encode('utf-8'))
                         try:
-                            client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
-                            client.sendall(encrypted_telemetry)
-                            # print(f'Data sent to server: {telemetry_json}')
-                        except BrokenPipeError:
-                            print("⚠️ Connection lost while sending data. Skipping send.")
-                            break  # Exit the run() loop if server is gone
+                            prev_vlm_desc.append(vlm_description)
+                            # LLM Processing
+                            LLM_response = self.is_emergency(vlm_description)
+
+                            #insert into client response
+                            telemetry_data['vlm_description'] = vlm_description
+                            telemetry_data['person_found'] = True if '1. Person Found' in LLM_response else False
+                            telemetry_data['requires_assistance'] = True if '2. Person Requires Assistance' in LLM_response else False
+                            telemetry_data['assistance_instructions'] = LLM_response
+                        except HfHubHTTPError as e:
+                            if "402 Client Error" in str(e):
+                                print('Max calls for free trier credits.')
+
+                                LLM_response = 'Max calls for free trier credits.'
+                                telemetry_data['vlm_description'] = vlm_description
+                                telemetry_data['person_found'] = True
+                                telemetry_data['requires_assistance'] = 'N/A'
+                                telemetry_data['assistance_instructions'] = LLM_response
+                                telemetry_data['detection_id'] = detection_id
+                            else:
+                                raise
+
+                        if telemetry_data['person_found'] or person_detected:
+                            cv2.imwrite(yolo_detection_path, best_yolo_image)
+                            cv2.putText(bgr_image, f"Person found...", (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
+                            telemetry_data['detection_id'] = detection_id
+
+
+                            # Encrypt and send telemetry data for mapping
+                            telemetry_json = json.dumps(telemetry_data)
+                            encrypted_telemetry = cipher.encrypt(telemetry_json.encode('utf-8'))
+                            try:
+                                client.sendall(len(encrypted_telemetry).to_bytes(8, byteorder='big'))
+                                client.sendall(encrypted_telemetry)
+                                # print(f'Data sent to server: {telemetry_json}')
+                            except BrokenPipeError:
+                                print("⚠️ Connection lost while sending data. Skipping send.")
+                                break  # Exit the run() loop if server is gone
 
                     best_conf = 0.0
 
-            # after 10 iterations, land
-            if iterations >= 10:
-                max_iterations = True
+            if self.orbiting and self.orbit_loops >= 1:
+                self.start_scanning = False
+                self.orbiting = False
+                self.return_home = True
+                self.target_altitude = 20
+
+            if self.return_home:
                 self.waypoints = [[0,0]]
-                if abs(x_pos) < self.target_precision and abs(y_pos) < self.target_precision:
+                if abs(x_pos-self.target_position[0]) < self.target_precision and abs(y_pos-self.target_position[1]) < self.target_precision:
                     self.target_altitude = self.target_altitude - 0.05
+                else:
+                    self.target_altitude = 20
 
                 if self.target_altitude < 0.10:
                     self.front_left_motor.setVelocity(0)
@@ -435,6 +486,7 @@ class Mavic(Robot):
                         msg = cipher.encrypt(b"MISSION_COMPLETE")
                         client.sendall(len(msg).to_bytes(8, byteorder='big'))
                         client.sendall(msg)
+                        quit()
                     except:
                         print("⚠️ Could not notify server of completion.")
 

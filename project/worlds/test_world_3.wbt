@@ -20,13 +20,14 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/dji/mavic/protos/Mavic2Pro.proto"
 
 WorldInfo {
-  basicTimeStep 16
   defaultDamping Damping {
+    linear 0.4
+    angular 0.4
   }
 }
 Viewpoint {
-  orientation 0.500073821619848 -0.5035546515853486 -0.7045274201883689 4.375642481648691
-  position 7.094975581807297 -64.41331448329119 204.58567762694463
+  orientation 0.4546838228000169 -0.5431957001932026 -0.7058335870271258 4.54269460479678
+  position -10.860902509652945 -121.97774547993752 295.32584187187757
 }
 TexturedBackground {
 }
@@ -240,7 +241,7 @@ Transform {
   ]
 }
 Transform {
-  translation -8.25352 -32.4543 -0.000366442
+  translation -1.73404 -31.7058 -0.000362472
   rotation 6.38314999984765e-06 -2.6439899999368945e-06 0.9999999999761324 0.785399
   scale 0.01 0.01 0.01
   children [

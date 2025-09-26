@@ -1,0 +1,32 @@
+[
+    {
+        "world_and_scenario": "world1_scenario1"
+        , "vlm_description": "Person standing in a parking lot"
+        , "llm_response": "1. Person Found. 2. Person does not require assistance. Person misdialed emergency services and is not injured or in danger"
+    }, 
+    {
+        "world_and_scenario": "world1_scenario2"
+        , "vlm_description": "Person lying down on the grass in the woods."
+        , "llm_response": "1. Person Found. 2. Person Requires Immediate Assistance. 3. Assistance needed Person is lying down on the grass of the woods. The person may be unconscious and unresponsive."
+    },
+    {
+        "world_and_scenario": "world2_scenario1"
+        , "vlm_description": "Person standing by a red car."
+        , "llm_response": "1. Person Found. 2. Person does not require assistance. Person seems safe and uninjured. Person should be directed or escorted to a safe area."
+    },
+    {
+        "world_and_scenario": "world2_scenario2"
+        , "vlm_description": "A person lying in water and another person standing atop the other."
+        , "llm_response": "1. Person Found. 2. Person Requires Immediate Assistance. 3. Assistance needed There are two people at the scene. One of them is lying in the water and pay be injured or unconcious. The other person seems safe. Instruct the safe person to care for the injured/prone person until help arrives."
+    },
+    {
+        "world_and_scenario": "world3_scenario1"
+        , "vlm_description": "A person standing on the sidewalk."
+        , "llm_response": "1. Person Found. 2. Person does not require assistance. The message indicates that the person is locked out of their home and is not in danger or injured."
+    },
+    {
+        "world_and_scenario": "world3_scenario2"
+        , "vlm_description": "A car accident between a red car and a green car with a person standing outside the cars."
+        , "llm_response": "1. Person Found. 2. Person Requires Immediate Assistance. 3. Assistance needed The image only contains one person and the message indicates the other driver may be stuck in their car. Instruct the keep the scene safe and wait for emergency services."
+    }
+]
