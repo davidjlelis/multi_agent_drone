@@ -2,31 +2,91 @@
     {
         "world_and_scenario": "world1_scenario1"
         , "vlm_description": "Person standing in a parking lot"
-        , "llm_response": "1. Person Found. 2. Person does not require assistance. Person misdialed emergency services and is not injured or in danger"
+        , "llm_response": "1. Person Found.\n2. Person does not require assistance. Person misdialed emergency services and is not injured or in danger"
     }, 
     {
         "world_and_scenario": "world1_scenario2"
         , "vlm_description": "Person lying down on the grass in the woods."
-        , "llm_response": "1. Person Found. 2. Person Requires Immediate Assistance. 3. Assistance needed Person is lying down on the grass of the woods. The person may be unconscious and unresponsive."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance.\n3. Assistance needed: Person is lying down on the grass of the woods. The person may be unconscious and unresponsive."
     },
     {
         "world_and_scenario": "world2_scenario1"
         , "vlm_description": "Person standing by a red car."
-        , "llm_response": "1. Person Found. 2. Person does not require assistance. Person seems safe and uninjured. Person should be directed or escorted to a safe area."
+        , "llm_response": "1. Person Found.\n2. Person does not require assistance. Person seems safe and uninjured. Person should be directed or escorted to a safe area."
     },
     {
         "world_and_scenario": "world2_scenario2"
         , "vlm_description": "A person lying in water and another person standing atop the other."
-        , "llm_response": "1. Person Found. 2. Person Requires Immediate Assistance. 3. Assistance needed There are two people at the scene. One of them is lying in the water and pay be injured or unconcious. The other person seems safe. Instruct the safe person to care for the injured/prone person until help arrives."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance.\n3. Assistance needed: There are two people at the scene. One of them is lying in the water and pay be injured or unconcious. The other person seems safe. Instruct the safe person to care for the injured/prone person until help arrives."
     },
     {
         "world_and_scenario": "world3_scenario1"
         , "vlm_description": "A person standing on the sidewalk."
-        , "llm_response": "1. Person Found. 2. Person does not require assistance. The message indicates that the person is locked out of their home and is not in danger or injured."
+        , "llm_response": "1. Person Found.\n2. Person does not require assistance. The message indicates that the person is locked out of their home and is not in danger or injured."
     },
     {
         "world_and_scenario": "world3_scenario2"
         , "vlm_description": "A car accident between a red car and a green car with a person standing outside the cars."
-        , "llm_response": "1. Person Found. 2. Person Requires Immediate Assistance. 3. Assistance needed The image only contains one person and the message indicates the other driver may be stuck in their car. Instruct the keep the scene safe and wait for emergency services."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance.\n3. Assistance needed: The image only contains one person and the message indicates the other driver may be stuck in their car. Instruct the keep the scene safe and wait for emergency services."
+    }, 
+    {
+        "world_and_scenario": "human_damage_1"
+        , "vlm_description": "A man and two women running and a crowd of people lying on the grass."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: The individuals in the image seem to be running away from something in a sense of urgency. With the message, the people are in a dangerous active shooter scene and should evacuate as quickly as possible, seek help from law enforcement, and seek medical attention from first reponsder. "
+    }, 
+    {
+        "world_and_scenario": "human_damage_2"
+        , "vlm_description": "A group of people in a fight with one person lying in the grass."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: The group seems to be in a physical altercation and one of the people is lying on the group and should be assumed to be unconscious. Law enforcement and first responders should arrive as quickly as possible to deescalate the situation and provide aid to those who are injured."
+    }, 
+    {
+        "world_and_scenario": "car_accident_1"
+        , "vlm_description": "A hurt man in an car accident with the airbags deployed. The man is rubbing his head."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: The man seems to be hurt after being involved in a car accident. As the air bags are deployed, the man may be seriously hurt and should be seen by first responders for head and body injuries."
+    }, 
+    {
+        "world_and_scenario": "car_accident_2"
+        , "vlm_description": "A man sitting in his car smiling at the camera."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: The man doesn't seem to be injured or in distress, but due to the nature of car accidents and their prolonged affects on the body, medical attention may still be warranted."
+    }, 
+    {
+        "world_and_scenario": "hurricane_katrina_roof_1"
+        , "vlm_description": "A group of people on a roof waving USA flags with \"HELP\" written on the roof. "
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: Combined with the message of a recent hurricane and the group of people on the roof, the group seem to be in danger as the surrounding area may be flooded and they are trapped. Provide water or aerial vehicles to recover the victims and evacuated to the nearest shelter."
+    }, 
+    {
+        "world_and_scenario": "hurricane_katrina_roof_2"
+        , "vlm_description": "A group of people on roofs with the houses surrounded by a large amount of water."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: Combined with the message of a recent hurricane and the group of people on the roof, the group seem to be in danger as the surrounding area may be flooded and they are trapped. Provide water or aerial vehicles to recover the victims and evacuated to the nearest shelter."
+    }, 
+    {
+        "world_and_scenario": "nonemergency_1"
+        , "vlm_description": "A woman smiling with black hair, blue shirt, holding up the peace sign."
+        , "llm_response": "1. Person Found.\n2. Person does not require assistance. As the person in the image doesn't seem to be in any distress or hurt, no assistance is required."
+    }, 
+    {
+        "world_and_scenario": "nonemergency_2"
+        , "vlm_description": "A soccer team celebrating with a man sliding on his knees"
+        , "llm_response": "1. Person Found.\n2. Person does not require assistance. As the team seem to be celebrating their game and not hurt or in distress, no assistance is required."
+    }, 
+    {
+        "world_and_scenario": "person_in_house_fire_1"
+        , "vlm_description": "A man in a kitchen near a large flame."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: The man seems to have started a large fire in his kitchen and may require fire rescue to aid. While the main doesn't seem injured, he should still be seen by a medical team, along with anyone else in the room and house."
+    }, 
+    {
+        "world_and_scenario": "person_in_house_fire_2"
+        , "vlm_description": "A man on the top floor of his building with a large fire burning inside the building. A second man in on a ladder reaching towards him."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: The scene involves large building on fire and a man stuck on the top floor, being rescued by another man. Fire rescue team should be deployed to extinguish the fire and a medical team should provide any aid to the men and anyone else involved."
+    }, 
+    {
+        "world_and_scenario": "person_on_ledge_1"
+        , "vlm_description": "A man on the ledge of the building and a woman reaching out towards the man."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: First responders should be deployed immediately to return the man inside the building or provide a surface to catch the man safely."
+    }, 
+    {
+        "world_and_scenario": "person_on_ledge_2"
+        , "vlm_description": "A man sitting on the edge of a cliff looking out to canyons."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance\n3. Assistance needed: The man is on the edge of the cliff and is in danger of falling off the cliffside. While the man may not be purposely endangering himself, the scene is still not safe and the man may still fall. First responders to be deployed to return the man to a safer area."
     }
 ]

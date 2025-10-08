@@ -61,7 +61,7 @@
 }
 , {
     "world_name": "test_world_2"
-    , "world_description": "A small town affected by a hurricane and flood."
+    , "world_description": "A small town affected by a hurricane with a small flood."
     , "environment": [
         {
             "name": "start"
@@ -106,7 +106,7 @@
     ], "scenario" :[
         {
             "scenario_type": "Safe"
-            , "message": "I'm locked out of my car."
+            , "message": "I lost my keys and am locked out of my car."
             , "x": 25
             , "y": -23
         },
@@ -120,7 +120,7 @@
 }
 , {
     "world_name": "test_world_3"
-    , "world_description": "An urban city neighborhood after an earthquake."
+    , "world_description": "An urban city neighborhood."
     , "environment": [
         {
             "name": "start"

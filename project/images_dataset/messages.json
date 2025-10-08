@@ -1,0 +1,53 @@
+[
+    {
+        "file_name" : "human_damage_1.png",
+        "message" : "There is a shooter at the festival. Please send help!",
+        "environment_description": "A music festival in downtown of a city."
+    }, {
+        "file_name" : "human_damage_2.png",
+        "message" : "My friend got hit by someone and the others are fighting.",
+        "environment_description": "A suburban shopping complex."
+    }, {
+        "file_name" : "car_accident_1.jpg",
+        "message" : "I rear-ended a car at high speed and hit my head on the steering wheel.",
+        "environment_description": "A interstate highway."
+    }, {
+        "file_name" : "car_accident_2.jpeg",
+        "message" : "I've been rear-ended. The high was light and minor damage.",
+        "environment_description": "A local road near a park and neighborhoods."
+    }, {
+        "file_name" : "hurricane_katrina_roof_1.jpeg",
+        "message" : "The hurricane caused my house to be flooded and my family is stuck on the roof.",
+        "environment_description": "A suburban neighborhood after a flood."
+    }, {
+        "file_name" : "hurricane_katrina_roof_2.jpeg",
+        "message" : "The hurricane caused my house to be flooded and my neighbor and I are stuck on the roof.",
+        "environment_description": "A suburban neighborhood after a flood."
+    }, {
+        "file_name" : "person_in_house_fire_1.jpg",
+        "message" : "The food in my kitchen is on fire.",
+        "environment_description": "A suburban neighborhood."
+    }, {
+        "file_name" : "person_in_house_fire_2.jpg",
+        "message" : "There's a fire in my neighbor's house and he's stuck on the top floor.",
+        "environment_description": "A suburban neighborhood."
+    }, {
+        "file_name" : "person_on_ledge_1.jpg",
+        "message" : "My husband is stuck on the ledge of my apartment. We're on the 17th floor.",
+        "environment_description": "The financial district of a large metropolitan area with skyscrapers."
+    }, {
+        "file_name" : "person_on_ledge_2.jpg",
+        "message" : "There's someone sitting on the ledge of the cliff.",
+        "environment_description": "The Grand Canyon."
+    }, {
+        "file_name" : "nonemergency_1.png",
+        "message" : "My favorite idol is so pretty!",
+        "environment_description": "A meet-and-greet for a band in the downtown of a city."
+    }, {
+        "file_name" : "nonemergency_2.png",
+        "message" : "My favorite football team just won the game!",
+        "environment_description": "A football/soccer stadium"
+    }
+    
+]
+
