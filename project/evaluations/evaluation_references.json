@@ -27,7 +27,7 @@
     {
         "world_and_scenario": "world3_scenario2"
         , "vlm_description": "A car accident between a red car and a green car with a person standing outside the cars."
-        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance.\n3. Assistance needed: The image only contains one person and the message indicates the other driver may be stuck in their car. Instruct the keep the scene safe and wait for emergency services."
+        , "llm_response": "1. Person Found.\n2. Person Requires Immediate Assistance.\n3. Assistance needed: The image only contains one person and the message indicates the other driver may be stuck in their car. Instruct first responders to keep the scene safe and wait for medical and rescue services."
     }, 
     {
         "world_and_scenario": "human_damage_1"
