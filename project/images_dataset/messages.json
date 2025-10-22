@@ -47,6 +47,14 @@
         "file_name" : "nonemergency_2.png",
         "message" : "My favorite football team just won the game!",
         "environment_description": "A football/soccer stadium"
+    }, {
+        "file_name" : "10_yolo_detection.jpg",
+        "message" : "I'm sorry. I misdialed.",
+        "environment_description": "A small suburban area with a school, houses, and small marts."
+    }, {
+        "file_name" : "32_yolo_detection.jpg",
+        "message" : "I just got hit by a car and can't get out.",
+        "environment_description": "An urban city neighborhood."
     }
     
 ]

@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 import os
 # import requests
 from huggingface_hub import InferenceClient
-from huggingface_hub.errors import HfHubHTTPError
+from huggingface_hub.utils import HfHubHTTPError
 import json
 
 # Load YOLO model
@@ -78,7 +78,8 @@ def is_emergency(description: str, message: str, environment_description: str) -
 
 # video_file_name = 'waterfall'
 # scene_path = './results/scenes/'
-img_folder_path = './images_dataset/sample/'
+# img_folder_path = './images_dataset/sample/'
+img_folder_path = './images_dataset/drone_sim_rerun/'
 img_results_path = '../videos/results/images/'
 json_results_path = '../videos/results/JSON/'
 # messages_fp = os.path.join(img_folder_path,'messages.json')
@@ -101,7 +102,7 @@ results = []
 
 prev_vlm_desc = []
 
-results_json_path = './results/images_sim/'
+results_json_path = './results/drone_sim_rerun/'
 results_json_filename = 'results.json'
 # results_json_filepath = os.path.join(results_json_path, results_json_filename)
 # with open(results_json_filepath, "w") as f:
@@ -205,8 +206,8 @@ for file in os.listdir(img_folder_path):
         if person_detected: # and self.far_from_other_detections(new_detection=(est_x, est_y), detections=detections) and (est_x, est_y) not in detections:            
             # Florence2 VLM
             prompt = "<MORE_DETAILED_CAPTION>"
-            inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(VL_model.device, torch_dtype)
-            output_tokens = VL_model.generate(**inputs, max_new_tokens=50)
+            inputs = VLM_processor(images=pil_image, text=prompt, return_tensors="pt").to(device)
+            output_tokens = VL_model.generate(**inputs, max_new_tokens=1024)
             vlm_description = VLM_processor.batch_decode(output_tokens, skip_special_tokens=True)[0]
             vlm_description = vlm_description.replace('3D rendering', '')
             detection_id += 1
